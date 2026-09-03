@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "fixtures": "tsx scripts/generate-fixtures.ts",
-    "golden:owner": "tsx scripts/generate-owner-golden.ts"
+    "golden:owner": "tsx scripts/generate-owner-golden.ts",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.123.0",

@@ -1,0 +1,36 @@
+# Keyless CI (§4.7): the full pipeline and every export run in MOCK_MODE against the
+# bundled Overture-shaped parquet — no secrets anywhere in this workflow.
+name: ci
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      MOCK_MODE: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Unit, property & gate suites (G1–G8)
+        run: npx vitest run
+      - name: Production build
+        run: npm run build
+      - name: Playwright browsers
+        run: npx playwright install --with-deps chromium
+      - name: Mock-mode full campaign E2E
+        run: npx playwright test
+      - name: Upload e2e traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7

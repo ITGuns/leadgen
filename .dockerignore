@@ -1,0 +1,13 @@
+node_modules
+.next
+.git
+.data
+.env
+exports
+backups
+test-results
+playwright-report
+docs
+*.md
+!data/ATTRIBUTION.md
+.claude

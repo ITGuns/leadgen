@@ -1,0 +1,34 @@
+# LeadForge deployment (ARCH A1): app + cloudflared, no inbound ports — the tunnel
+# dials out. `docker compose up -d` on a ≥4 GB host. A redeploy must never touch the
+# /data volume (named volume below).
+
+services:
+  leadforge:
+    build: .
+    container_name: leadforge
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_PATH: /data/leadforge.db
+      EXPORTS_DIR: /data/exports
+      BACKUPS_DIR: /data/backups
+      CONFIG_DIR: /data/config
+    volumes:
+      - leadforge-data:/data
+    # No ports published on purpose — access is through the tunnel only (§5).
+    # For LAN testing on an office box you may temporarily uncomment:
+    # ports:
+    #   - "127.0.0.1:3000:3000"
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: leadforge-tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CF_TUNNEL_TOKEN}
+    depends_on:
+      - leadforge
+
+volumes:
+  leadforge-data:

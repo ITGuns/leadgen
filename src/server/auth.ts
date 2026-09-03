@@ -40,12 +40,24 @@ export async function verifyAccessJWT(
   }
 }
 
+/** G8 test seam: lets the access-gate suite verify real-mode 401/200 behavior with a
+ * locally-signed key set instead of Cloudflare's remote certs endpoint. */
+type TestJwks = { getKey: JWTVerifyGetKey; issuer: string; audience: string };
+export function __setTestJwks(t: TestJwks | null): void {
+  (globalThis as { __leadforgeTestJwks?: TestJwks | null }).__leadforgeTestJwks = t;
+}
+
 export async function getIdentity(req: Request): Promise<Identity | null> {
   if (env.mockMode) return MOCK_IDENTITY;
+  const token = req.headers.get("cf-access-jwt-assertion");
+  const testJwks = (globalThis as { __leadforgeTestJwks?: TestJwks | null }).__leadforgeTestJwks;
+  if (testJwks) {
+    if (!token) return null;
+    return verifyAccessJWT(token, testJwks);
+  }
   const teamDomain = env.cfAccessTeamDomain();
   const aud = env.cfAccessAud();
   if (!teamDomain || !aud) return null; // real mode without Access config = locked shut, never open
-  const token = req.headers.get("cf-access-jwt-assertion");
   if (!token) return null;
   return verifyAccessJWT(token, { getKey: jwks(teamDomain), issuer: `https://${teamDomain}`, audience: aud });
 }
