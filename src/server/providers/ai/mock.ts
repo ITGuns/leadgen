@@ -19,21 +19,27 @@ export class MockAIProvider implements AIProvider {
     businessName: string;
     multiLocation: boolean;
     pages: { url: string; text: string }[];
-  }): Promise<OwnerExtraction | null> {
+  }): Promise<{ extraction: OwnerExtraction | null; costUSD: number }> {
     for (const page of input.pages) {
       const text = page.text;
+      if (/review|testimonial|designed by|franchise/i.test(text.slice(0, 200)) && !ROLE_RE.test(text)) continue;
       for (const re of [ROLE_RE, ROLE_FIRST_RE, FOUNDED_RE]) {
         const m = text.match(re);
         if (!m) continue;
         const name = re === ROLE_FIRST_RE ? m[2] : m[1];
         const role = re === FOUNDED_RE ? "founder" : (re === ROLE_FIRST_RE ? m[1] : m[2]).toLowerCase();
         const idx = m.index ?? 0;
+        const near = text.slice(Math.max(0, idx - 80), idx + m[0].length + 80);
+        if (/review|testimonial|designed by|built by|franchise/i.test(near)) continue;
         const snippet = text.slice(Math.max(0, idx - 60), Math.min(text.length, idx + m[0].length + 60)).trim();
         const multi = input.multiLocation || /\d+\s+locations/.test(text);
-        return { ownerName: name, role, evidenceSnippet: snippet, confidence: multi ? "low" : "high" };
+        return {
+          extraction: { ownerName: name, role, evidenceSnippet: snippet, confidence: multi ? "low" : "high" },
+          costUSD: 0,
+        };
       }
     }
-    return null;
+    return { extraction: null, costUSD: 0 };
   }
 
   async proposeTaxonomy(niche: string): Promise<string[]> {

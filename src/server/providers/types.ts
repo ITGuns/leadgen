@@ -43,11 +43,12 @@ export type OwnerExtraction = z.infer<typeof OwnerExtractionSchema>;
 export interface AIProvider {
   readonly name: string;
   readonly costPerOwnerCallUSD: number;
+  /** costUSD is the ACTUAL spend when the provider reports usage, else the flat estimate (C10). */
   extractOwner(input: {
     businessName: string;
     multiLocation: boolean;
     pages: { url: string; text: string }[];
-  }): Promise<OwnerExtraction | null>;
+  }): Promise<{ extraction: OwnerExtraction | null; costUSD: number }>;
   proposeTaxonomy(niche: string, catalog: string[]): Promise<string[]>;
 }
 

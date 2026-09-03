@@ -158,6 +158,7 @@ export const leads = sqliteTable(
     ownerEvidence: text("owner_evidence"),
     ownerConfidence: text("owner_confidence"), // 'high' | 'low'
     ownerSource: text("owner_source"), // 'heuristic' | 'ai' | 'outscraper'
+    ownerCheckedAt: text("owner_checked_at"), // set after an extraction attempt (idempotency cursor)
     status: text("status").notNull().default("new"), // new|contacted|interested|not_interested|dnc
     assignee: text("assignee"),
     tags: text("tags", { mode: "json" }).$type<string[]>(),

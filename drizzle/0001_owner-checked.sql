@@ -1,0 +1,1 @@
+ALTER TABLE `leads` ADD `owner_checked_at` text;

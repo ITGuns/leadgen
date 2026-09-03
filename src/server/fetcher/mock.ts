@@ -15,7 +15,7 @@ const ROLES = ["Owner", "Founder", "Proprietor", "Principal", "Owner-Operator"];
 export function mockOwnerFor(domain: string): { name: string; role: string } | null {
   const h = mockHash(`owner:${domain}`);
   if (h % 10 >= 6) return null; // 60% of real sites carry an extractable owner
-  return { name: `${FIRST[h % FIRST.length]} ${LAST[(h >> 4) % LAST.length]}`, role: ROLES[(h >> 8) % ROLES.length] };
+  return { name: `${FIRST[h % FIRST.length]} ${LAST[(h >>> 4) % LAST.length]}`, role: ROLES[(h >>> 8) % ROLES.length] };
 }
 export function mockIsMultiLocation(domain: string): boolean {
   return mockHash(`multi:${domain}`) % 10 === 7;

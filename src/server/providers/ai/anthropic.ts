@@ -35,12 +35,13 @@ export class AnthropicProvider implements AIProvider {
     businessName: string;
     multiLocation: boolean;
     pages: { url: string; text: string }[];
-  }): Promise<OwnerExtraction | null> {
+  }): Promise<{ extraction: OwnerExtraction | null; costUSD: number }> {
     const pagesText = input.pages
       .map((p) => `--- PAGE ${p.url} ---\n${p.text.slice(0, 6000)}`)
       .join("\n\n")
       .slice(0, 16000);
     let raw: string;
+    let costUSD = this.costPerOwnerCallUSD;
     try {
       const response = await this.client.messages.create({
         model: env.anthropicModel(),
@@ -53,6 +54,8 @@ export class AnthropicProvider implements AIProvider {
           },
         ],
       });
+      // actual spend from reported usage at Haiku 4.5 rates ($1/$5 per MTok)
+      costUSD = response.usage.input_tokens * 1e-6 + response.usage.output_tokens * 5e-6;
       const block = response.content.find((b) => b.type === "text");
       raw = block && block.type === "text" ? block.text : "";
     } catch (error) {
@@ -61,24 +64,25 @@ export class AnthropicProvider implements AIProvider {
       }
       throw error;
     }
+    const none = { extraction: null, costUSD };
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return null;
+    if (!jsonMatch) return none;
     let parsed: unknown;
     try {
       parsed = JSON.parse(jsonMatch[0]);
     } catch {
-      return null;
+      return none;
     }
     const obj = parsed as { found?: boolean };
-    if (!obj.found) return null;
+    if (!obj.found) return none;
     const validated = OwnerExtractionSchema.safeParse(parsed);
-    if (!validated.success || !validated.data.ownerName) return null;
+    if (!validated.success || !validated.data.ownerName) return none;
     // anti-hallucination: the snippet must actually appear in the fetched pages
     const allText = input.pages.map((p) => p.text).join("\n");
     const snippet = validated.data.evidenceSnippet.trim();
-    if (!allText.includes(snippet.slice(0, Math.min(snippet.length, 80)))) return null;
+    if (!allText.includes(snippet.slice(0, Math.min(snippet.length, 80)))) return none;
     const confidence = input.multiLocation ? "low" : validated.data.confidence;
-    return { ...validated.data, confidence };
+    return { extraction: { ...validated.data, confidence }, costUSD };
   }
 
   async proposeTaxonomy(niche: string, catalog: string[]): Promise<string[]> {

@@ -20,6 +20,6 @@ Watchlist #4 RESOLVED: live probe (scripts/probe-overture.ts) verified the 2026-
 - [x] P0 Blueprint (ARCHITECTURE, CONTRACTS, DECISIONS, STATUS, BLOCKERS; repo scaffolded: Next 16 + deps, native modules smoke-tested)
 - [x] P1 Data core (schema+migrations, normalize/identity, budget guard+intents, resumable worker, settings/secure-store/audit, provider interfaces; 27 tests green)
 - [x] P2 Data & enrichment (fixtures via real DuckDB path; ingest+gate+conflation+chains; classification; polite fetcher; website check; scoring engine+rubric; owner heuristic+Haiku adapter; PageSpeed/Outscraper/Drive adapters + mocks; fan-out; goldens G1-G6 — 188 tests green. Live bucket probe verified release 2026-08-19.0 schema; fixed taxonomy.alternates drift)
-- [ ] P3 Campaign builder + pipeline + workspace UI
+- [x] P3 Campaign builder + pipeline + workspace UI (8-stage resumable pipeline, global scheduler, estimator gating Run, top-up with intents/caps, D17 enforcement; API routes; builder/progress/leads UI verified live in mock — smoke run completes in ~2s at $0)
 - [ ] P4 Exports + suppression + audit
 - [ ] P5 Ops + #Z checklist

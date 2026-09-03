@@ -36,7 +36,7 @@ export class MockListingsProvider implements ListingsProvider {
     const records: RawListing[] = [];
     for (let i = 0; i < count; i++) {
       const hh = mockHash(`${providerJobId}:${i}`);
-      const name = `${FIRST[hh % FIRST.length]}'s ${category} ${SUFFIX[(hh >> 3) % SUFFIX.length]}`;
+      const name = `${FIRST[hh % FIRST.length]}'s ${category} ${SUFFIX[(hh >>> 3) % SUFFIX.length]}`;
       const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "");
       const hasSite = hh % 10 < 4;
       records.push({
@@ -52,7 +52,7 @@ export class MockListingsProvider implements ListingsProvider {
         lat: 30 + (hh % 100) / 100,
         lng: -97 - (hh % 100) / 100,
         category,
-        ownerName: hh % 6 === 0 ? `${FIRST[(hh >> 5) % FIRST.length]} ${["Ames", "Boyd", "Cole"][hh % 3]}` : null,
+        ownerName: hh % 6 === 0 ? `${FIRST[(hh >>> 5) % FIRST.length]} ${["Ames", "Boyd", "Cole"][hh % 3]}` : null,
       });
     }
     return { records, actualCostUSD: this.estimateCostUSD(records.length) };

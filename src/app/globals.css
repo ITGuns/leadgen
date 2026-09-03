@@ -1,26 +1,38 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  color-scheme: dark;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  @apply bg-zinc-950 text-zinc-200 antialiased;
+}
+
+::selection {
+  @apply bg-emerald-500/30;
+}
+
+.card {
+  @apply rounded-xl border border-zinc-800 bg-zinc-900/60 p-4;
+}
+.input {
+  @apply rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-sm text-zinc-100 outline-none placeholder:text-zinc-500 focus:border-emerald-600;
+}
+.btn {
+  @apply inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm font-medium text-zinc-100 hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40;
+}
+.btn-primary {
+  @apply border-emerald-700 bg-emerald-700 hover:bg-emerald-600;
+}
+.btn-danger {
+  @apply border-red-800 bg-red-900/60 hover:bg-red-800;
+}
+.chip {
+  @apply inline-flex items-center rounded-full border border-zinc-700 bg-zinc-800/80 px-2 py-0.5 text-xs text-zinc-300;
+}
+.th {
+  @apply px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500;
+}
+.td {
+  @apply px-3 py-2 text-sm;
 }

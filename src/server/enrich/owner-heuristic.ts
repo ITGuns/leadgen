@@ -57,7 +57,9 @@ export function extractOwnerHeuristic(input: {
         const name = m[1];
         if (!name || NOT_NAMES.has(name.toLowerCase())) continue;
         const idx = m.index ?? 0;
-        const near = text.slice(Math.max(0, idx - 90), Math.min(text.length, idx + m[0].length + 90));
+        // ±60: wide enough to catch review/credit context adjacent to the mention,
+        // narrow enough not to reject an owner because of an unrelated later sentence
+        const near = text.slice(Math.max(0, idx - 60), Math.min(text.length, idx + m[0].length + 60));
         if (REJECT_NEARBY.some((r) => r.test(near))) continue;
         if (WEAK_ROLE_NEARBY.test(m[0])) continue;
         // reject candidates that are actually part of the business name itself ("Baker Family Roofing" → "Baker")
