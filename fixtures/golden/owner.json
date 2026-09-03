@@ -1,0 +1,420 @@
+{
+ "cases": [
+  {
+   "id": "01-comma-owner",
+   "businessName": "Jim's Roofing",
+   "pageUrl": "https://x.test/about",
+   "pageText": "Welcome to Jim's Roofing. Jim Baker, Owner, has repaired roofs across Austin since 2001.",
+   "expect": {
+    "ownerName": "Jim Baker",
+    "confidence": "high"
+   }
+  },
+  {
+   "id": "02-role-colon",
+   "businessName": "Nguyen Plumbing",
+   "pageUrl": "https://x.test/about",
+   "pageText": "About our company. Owner: Maria Nguyen. We fix leaks fast.",
+   "expect": {
+    "ownerName": "Maria Nguyen",
+    "confidence": "high"
+   }
+  },
+  {
+   "id": "03-founded-by",
+   "businessName": "Acme Roofing",
+   "pageUrl": "https://x.test/",
+   "pageText": "Acme Roofing was founded by Dale Ortiz in 2003 and remains family-run.",
+   "expect": {
+    "ownerName": "Dale Ortiz",
+    "confidence": "high"
+   }
+  },
+  {
+   "id": "04-em-dash-proprietor",
+   "businessName": "Delgado Detailing",
+   "pageUrl": "https://x.test/about",
+   "pageText": "Meet Rosa Delgado — proprietor and lead detailer.",
+   "expect": {
+    "ownerName": "Rosa Delgado",
+    "confidence": "high"
+   }
+  },
+  {
+   "id": "05-is-the-owner",
+   "businessName": "Hank's Plumbing",
+   "pageUrl": "https://x.test/",
+   "pageText": "Hank Miller is the owner of Hank's Plumbing and answers every call himself.",
+   "expect": {
+    "ownerName": "Hank Miller",
+    "confidence": "high"
+   }
+  },
+  {
+   "id": "06-principal",
+   "businessName": "Hayes Electric",
+   "pageUrl": "https://x.test/team",
+   "pageText": "As principal, Tina Hayes oversees every job Hayes Electric takes on.",
+   "expect": {
+    "ownerName": "Tina Hayes",
+    "confidence": "high"
+   }
+  },
+  {
+   "id": "07-owned-operated",
+   "businessName": "Trujillo Concrete",
+   "pageUrl": "https://x.test/about",
+   "pageText": "Trujillo Concrete is owned and operated by Carlos Trujillo.",
+   "expect": {
+    "ownerName": "Carlos Trujillo",
+    "confidence": "high"
+   }
+  },
+  {
+   "id": "08-co-owner",
+   "businessName": "The Fix Shop",
+   "pageUrl": "https://x.test/about",
+   "pageText": "Peggy Kowalski, co-owner, started The Fix Shop out of her garage.",
+   "expect": {
+    "ownerName": "Peggy Kowalski",
+    "confidence": "high"
+   }
+  },
+  {
+   "id": "09-owner-operator",
+   "businessName": "Ferris Towing",
+   "pageUrl": "https://x.test/about",
+   "pageText": "Walt Ferris — Owner-Operator. Available 24/7 for Ferris Towing calls.",
+   "expect": {
+    "ownerName": "Walt Ferris",
+    "confidence": "high"
+   }
+  },
+  {
+   "id": "10-founder-comma",
+   "businessName": "Yoder Bakery",
+   "pageUrl": "https://x.test/our-story",
+   "pageText": "June Yoder, founder, still bakes every morning at Yoder Bakery.",
+   "expect": {
+    "ownerName": "June Yoder",
+    "confidence": "high"
+   }
+  },
+  {
+   "id": "11-middle-initial",
+   "businessName": "Marsh Movers",
+   "pageUrl": "https://x.test/about",
+   "pageText": "Ray T. Marsh, Owner, personally leads every Marsh Movers crew.",
+   "expect": {
+    "ownerName": "Ray T. Marsh",
+    "confidence": "high"
+   }
+  },
+  {
+   "id": "12-apostrophe-name",
+   "businessName": "O'Leary Cleaning",
+   "pageUrl": "https://x.test/about",
+   "pageText": "Dot O'Leary, Owner, founded O'Leary Cleaning with one vacuum and a bus pass.",
+   "expect": {
+    "ownerName": "Dot O'Leary",
+    "confidence": "high"
+   }
+  },
+  {
+   "id": "13-about-page-tie",
+   "businessName": "Sunrise HVAC",
+   "pageUrl": "https://x.test/about",
+   "pageText": "Our story. Gus Delgado, Owner. Sunrise HVAC serves the metro area.",
+   "expect": {
+    "ownerName": "Gus Delgado",
+    "confidence": "high"
+   }
+  },
+  {
+   "id": "14-multi-location-low",
+   "businessName": "Lone Star Pest",
+   "pageUrl": "https://x.test/about",
+   "pageText": "Lone Star Pest — Bud Pruett, Owner. Now with 12 locations across Texas, Oklahoma, and Louisiana.",
+   "expect": {
+    "ownerName": "Bud Pruett",
+    "confidence": "low"
+   }
+  },
+  {
+   "id": "15-serving-cities-low",
+   "businessName": "Blue Sky Pools",
+   "pageUrl": "https://x.test/about",
+   "pageText": "Serving Austin, Dallas, and Houston with pool care. Ida Okafor, Owner, leads Blue Sky Pools.",
+   "expect": {
+    "ownerName": "Ida Okafor",
+    "confidence": "low"
+   }
+  },
+  {
+   "id": "16-long-text-window",
+   "businessName": "Bennett Lawn Care",
+   "pageUrl": "https://x.test/",
+   "pageText": "Bennett Lawn Care has mowed the east side for twenty years. Every estimate is free and every crew is insured, because that is how a neighborhood company should run. Lena Bennett-Cruz, Owner, walks each property herself before quoting.",
+   "expect": {
+    "ownerName": "Lena Bennett-Cruz",
+    "confidence": "high"
+   }
+  },
+  {
+   "id": "17-trap-reviewer",
+   "businessName": "Smith Roofing",
+   "pageUrl": "https://x.test/",
+   "pageText": "\"Great work on our roof!\" — John Smith, Google review ★★★★★",
+   "expect": {
+    "ownerName": null
+   }
+  },
+  {
+   "id": "18-trap-reviewer-2",
+   "businessName": "Rapid Rooter",
+   "pageUrl": "https://x.test/about",
+   "pageText": "Sandra Pickens says: five stars, highly recommend Rapid Rooter to everyone!",
+   "expect": {
+    "ownerName": null
+   }
+  },
+  {
+   "id": "19-trap-owner-in-review",
+   "businessName": "Local Handyman Co",
+   "pageUrl": "https://x.test/",
+   "pageText": "\"The owner Frank Wells was fantastic\" — review left by a Yelp customer.",
+   "expect": {
+    "ownerName": null
+   }
+  },
+  {
+   "id": "20-trap-franchise-ceo",
+   "businessName": "Aire Serv of Waco",
+   "pageUrl": "https://x.test/about",
+   "pageText": "Aire Serv is a proud franchise. Neighborly franchise CEO Mike Bidwell congratulated local teams this year.",
+   "expect": {
+    "ownerName": null
+   }
+  },
+  {
+   "id": "21-trap-franchise-founder",
+   "businessName": "Budget Fencing",
+   "pageUrl": "https://x.test/about",
+   "pageText": "MegaFence is a national franchise network. MegaFence founder Bill Grand opened the 500th franchise location in 2024.",
+   "expect": {
+    "ownerName": null
+   }
+  },
+  {
+   "id": "22-trap-designer-credit",
+   "businessName": "Pecan Cafe",
+   "pageUrl": "https://x.test/",
+   "pageText": "Website designed by Chad Malone Creative. All rights reserved.",
+   "expect": {
+    "ownerName": null
+   }
+  },
+  {
+   "id": "23-trap-built-by",
+   "businessName": "Heritage Painting",
+   "pageUrl": "https://x.test/",
+   "pageText": "Site built by Jane Doe Design Co — powered by Squarespace.",
+   "expect": {
+    "ownerName": null
+   }
+  },
+  {
+   "id": "24-trap-roster-no-role",
+   "businessName": "Elite Movers",
+   "pageUrl": "https://x.test/team",
+   "pageText": "Our team: Bob Jones, Alice Ray, Sam Hill, and six licensed movers ready to help.",
+   "expect": {
+    "ownerName": null
+   }
+  },
+  {
+   "id": "25-trap-ceo-only",
+   "businessName": "Ortega Logistics",
+   "pageUrl": "https://x.test/about",
+   "pageText": "Frank Ortega, CEO, joined in 2019 after a decade in freight.",
+   "expect": {
+    "ownerName": null
+   }
+  },
+  {
+   "id": "26-trap-president-only",
+   "businessName": "May Consulting",
+   "pageUrl": "https://x.test/about",
+   "pageText": "Linda May, President, speaks regularly at industry events.",
+   "expect": {
+    "ownerName": null
+   }
+  },
+  {
+   "id": "27-trap-bizname-as-name",
+   "businessName": "Acme Roofing",
+   "pageUrl": "https://x.test/",
+   "pageText": "Acme Roofing, owner of the best reputation in town, serves three counties.",
+   "expect": {
+    "ownerName": null
+   }
+  },
+  {
+   "id": "28-trap-empty",
+   "businessName": "Empty Site LLC",
+   "pageUrl": "https://x.test/",
+   "pageText": "",
+   "expect": {
+    "ownerName": null
+   }
+  },
+  {
+   "id": "29-trap-no-names",
+   "businessName": "Plain Brochure Co",
+   "pageUrl": "https://x.test/",
+   "pageText": "Quality service since 1998. Call today for a free estimate. Fully insured and bonded.",
+   "expect": {
+    "ownerName": null
+   }
+  },
+  {
+   "id": "30-trap-award-byline",
+   "businessName": "Marsh Movers",
+   "pageUrl": "https://x.test/",
+   "pageText": "Voted best movers by Gazette readers — Journal Staff, 2025 awards edition.",
+   "expect": {
+    "ownerName": null
+   }
+  },
+  {
+   "id": "31-fmt-comma-owner",
+   "businessName": "Reyes Radiators",
+   "pageUrl": "https://x.test/about",
+   "pageText": "Reyes Radiators quality since 2010. Omar Reyes, Owner, treats every customer like family at Reyes Radiators.",
+   "expect": {
+    "ownerName": "Omar Reyes",
+    "confidence": "high"
+   }
+  },
+  {
+   "id": "32-fmt-colon-founder",
+   "businessName": "Reyes Radiators",
+   "pageUrl": "https://x.test/about",
+   "pageText": "Reyes Radiators — about us. Founder: Omar Reyes. Licensed and insured.",
+   "expect": {
+    "ownerName": "Omar Reyes",
+    "confidence": "high"
+   }
+  },
+  {
+   "id": "33-fmt-founded-founder",
+   "businessName": "Reyes Radiators",
+   "pageUrl": "https://x.test/about",
+   "pageText": "Reyes Radiators was founded by Omar Reyes after fifteen years in the trade.",
+   "expect": {
+    "ownerName": "Omar Reyes",
+    "confidence": "high"
+   }
+  },
+  {
+   "id": "34-fmt-comma-owner",
+   "businessName": "Whitaker Wells",
+   "pageUrl": "https://x.test/about",
+   "pageText": "Whitaker Wells quality since 2010. Faye Whitaker, Owner, treats every customer like family at Whitaker Wells.",
+   "expect": {
+    "ownerName": "Faye Whitaker",
+    "confidence": "high"
+   }
+  },
+  {
+   "id": "35-fmt-colon-founder",
+   "businessName": "Whitaker Wells",
+   "pageUrl": "https://x.test/about",
+   "pageText": "Whitaker Wells — about us. Founder: Faye Whitaker. Licensed and insured.",
+   "expect": {
+    "ownerName": "Faye Whitaker",
+    "confidence": "high"
+   }
+  },
+  {
+   "id": "36-fmt-founded-founder",
+   "businessName": "Whitaker Wells",
+   "pageUrl": "https://x.test/about",
+   "pageText": "Whitaker Wells was founded by Faye Whitaker after fifteen years in the trade.",
+   "expect": {
+    "ownerName": "Faye Whitaker",
+    "confidence": "high"
+   }
+  },
+  {
+   "id": "37-fmt-comma-owner",
+   "businessName": "Branson Blinds",
+   "pageUrl": "https://x.test/about",
+   "pageText": "Branson Blinds quality since 2010. Cole Branson, Owner, treats every customer like family at Branson Blinds.",
+   "expect": {
+    "ownerName": "Cole Branson",
+    "confidence": "high"
+   }
+  },
+  {
+   "id": "38-fmt-colon-founder",
+   "businessName": "Branson Blinds",
+   "pageUrl": "https://x.test/about",
+   "pageText": "Branson Blinds — about us. Founder: Cole Branson. Licensed and insured.",
+   "expect": {
+    "ownerName": "Cole Branson",
+    "confidence": "high"
+   }
+  },
+  {
+   "id": "39-fmt-founded-founder",
+   "businessName": "Branson Blinds",
+   "pageUrl": "https://x.test/about",
+   "pageText": "Branson Blinds was founded by Cole Branson after fifteen years in the trade.",
+   "expect": {
+    "ownerName": "Cole Branson",
+    "confidence": "high"
+   }
+  },
+  {
+   "id": "40-fmt-comma-owner",
+   "businessName": "Petrov Paving",
+   "pageUrl": "https://x.test/about",
+   "pageText": "Petrov Paving quality since 2010. Nina Petrov, Owner, treats every customer like family at Petrov Paving.",
+   "expect": {
+    "ownerName": "Nina Petrov",
+    "confidence": "high"
+   }
+  },
+  {
+   "id": "41-fmt-colon-founder",
+   "businessName": "Petrov Paving",
+   "pageUrl": "https://x.test/about",
+   "pageText": "Petrov Paving — about us. Founder: Nina Petrov. Licensed and insured.",
+   "expect": {
+    "ownerName": "Nina Petrov",
+    "confidence": "high"
+   }
+  },
+  {
+   "id": "42-fmt-founded-founder",
+   "businessName": "Petrov Paving",
+   "pageUrl": "https://x.test/about",
+   "pageText": "Petrov Paving was founded by Nina Petrov after fifteen years in the trade.",
+   "expect": {
+    "ownerName": "Nina Petrov",
+    "confidence": "high"
+   }
+  },
+  {
+   "id": "43-fmt-is-the-proprietor",
+   "businessName": "Petrov Paving",
+   "pageUrl": "https://x.test/about",
+   "pageText": "Nina Petrov is the proprietor of Petrov Paving and a lifelong local.",
+   "expect": {
+    "ownerName": "Nina Petrov",
+    "confidence": "high"
+   }
+  }
+ ]
+}

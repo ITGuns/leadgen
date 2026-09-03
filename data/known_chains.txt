@@ -1,0 +1,97 @@
+# One chain name per line, matched against normalized business names (contains-match on the normalized form).
+# §4.2 — flag, never delete. Local franchisees are still leads; the flag is a filter.
+roto rooter
+mr rooter
+benjamin franklin plumbing
+one hour heating and air
+one hour air conditioning
+aire serv
+mr electric
+mister sparky
+mr handyman
+mr appliance
+five star bath solutions
+bath fitter
+re bath
+window world
+renewal by andersen
+champion windows
+pella windows
+precision garage door
+overhead door
+a1 garage door
+servpro
+servicemaster
+stanley steemer
+chem dry
+zerorez
+molly maid
+merry maids
+the cleaning authority
+two maids
+terminix
+orkin
+aptive
+mosquito joe
+mosquito squad
+trugreen
+lawn doctor
+weed man
+grounds guys
+critter control
+junk king
+1 800 got junk
+college hunks hauling junk
+two men and a truck
+all my sons moving
+pods
+u haul
+midas
+jiffy lube
+valvoline
+firestone complete auto care
+meineke
+aamco
+christian brothers automotive
+grease monkey
+take 5 oil change
+maaco
+safelite
+great clips
+supercuts
+sport clips
+fantastic sams
+massage envy
+european wax center
+palm beach tan
+anytime fitness
+planet fitness
+golds gym
+orangetheory
+club pilates
+the ups store
+fastsigns
+minuteman press
+allstate
+state farm
+farmers insurance
+edward jones
+h and r block
+jackson hewitt
+liberty tax
+keller williams
+re max
+coldwell banker
+century 21
+exp realty
+banfield pet hospital
+petco
+petsmart
+camp bow wow
+dogtopia
+kumon
+mathnasium
+sylvan learning
+primrose school
+kindercare
+la petite academy

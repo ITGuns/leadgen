@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "base": { "none": 95, "dead": 95, "parked": 93, "aggregator": 90, "social_only": 85, "real_site": 30, "unknown": 50 },
+  "baseChips": {
+    "none": "No website",
+    "dead": "Dead site",
+    "parked": "Parked domain",
+    "aggregator": "Aggregator listing only",
+    "social_only": "Social-only presence",
+    "real_site": "Working website",
+    "unknown": "Website unchecked"
+  },
+  "modifiers": [
+    { "cond": "builder", "add": 20, "chip": "Built on {builder}" },
+    { "cond": "mobile_below", "arg": 50, "add": 10, "chip": "Mobile score {mobileScore}" },
+    { "cond": "mobile_below", "arg": 30, "add": 5, "chip": "Very poor mobile" },
+    { "cond": "no_ssl", "add": 4, "chip": "No SSL" },
+    { "cond": "copyright_older_than", "arg": 3, "add": 4, "chip": "© {copyrightYear}" },
+    { "cond": "no_viewport", "add": 4, "chip": "Not mobile-friendly" },
+    { "cond": "no_contact_form", "add": 3, "chip": "No contact form" },
+    { "cond": "mobile_at_least", "arg": 80, "add": -12, "chip": "Fast mobile site" },
+    { "cond": "custom_recent", "add": -8, "chip": "Modern custom site" }
+  ],
+  "clamp": [0, 100]
+}

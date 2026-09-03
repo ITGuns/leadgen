@@ -1,0 +1,1125 @@
+{
+ "frozenClock": "2026-09-03T12:00:00.000Z",
+ "cases": [
+  {
+   "desc": "no website at all",
+   "input": {
+    "websiteClass": "none",
+    "check": null,
+    "mobileScore": null
+   },
+   "band": [
+    90,
+    100
+   ]
+  },
+  {
+   "desc": "no website, phone only",
+   "input": {
+    "websiteClass": "none",
+    "check": null,
+    "mobileScore": null
+   },
+   "band": [
+    90,
+    100
+   ]
+  },
+  {
+   "desc": "DNS-dead host",
+   "input": {
+    "websiteClass": "dead",
+    "check": null,
+    "mobileScore": null
+   },
+   "band": [
+    90,
+    100
+   ]
+  },
+  {
+   "desc": "connection-refused host",
+   "input": {
+    "websiteClass": "dead",
+    "check": null,
+    "mobileScore": null
+   },
+   "band": [
+    90,
+    100
+   ]
+  },
+  {
+   "desc": "GoDaddy parked page",
+   "input": {
+    "websiteClass": "parked",
+    "check": null,
+    "mobileScore": null
+   },
+   "band": [
+    90,
+    100
+   ]
+  },
+  {
+   "desc": "domain-for-sale lander",
+   "input": {
+    "websiteClass": "parked",
+    "check": null,
+    "mobileScore": null
+   },
+   "band": [
+    90,
+    100
+   ]
+  },
+  {
+   "desc": "Yelp listing as only site",
+   "input": {
+    "websiteClass": "aggregator",
+    "check": null,
+    "mobileScore": null
+   },
+   "band": [
+    90,
+    100
+   ]
+  },
+  {
+   "desc": "HomeAdvisor profile as site",
+   "input": {
+    "websiteClass": "aggregator",
+    "check": null,
+    "mobileScore": null
+   },
+   "band": [
+    90,
+    100
+   ]
+  },
+  {
+   "desc": "Angi company page as site",
+   "input": {
+    "websiteClass": "aggregator",
+    "check": null,
+    "mobileScore": null
+   },
+   "band": [
+    90,
+    100
+   ]
+  },
+  {
+   "desc": "shortener resolving to dead host",
+   "input": {
+    "websiteClass": "dead",
+    "check": null,
+    "mobileScore": null
+   },
+   "band": [
+    90,
+    100
+   ]
+  },
+  {
+   "desc": "sedo parking lander",
+   "input": {
+    "websiteClass": "parked",
+    "check": null,
+    "mobileScore": null
+   },
+   "band": [
+    90,
+    100
+   ]
+  },
+  {
+   "desc": "social_only: Facebook page only",
+   "input": {
+    "websiteClass": "social_only",
+    "check": null,
+    "mobileScore": null
+   },
+   "band": [
+    80,
+    89
+   ]
+  },
+  {
+   "desc": "social_only: Instagram only",
+   "input": {
+    "websiteClass": "social_only",
+    "check": null,
+    "mobileScore": null
+   },
+   "band": [
+    80,
+    89
+   ]
+  },
+  {
+   "desc": "social_only: Linktree only",
+   "input": {
+    "websiteClass": "social_only",
+    "check": null,
+    "mobileScore": null
+   },
+   "band": [
+    80,
+    89
+   ]
+  },
+  {
+   "desc": "social_only: site redirects to Facebook",
+   "input": {
+    "websiteClass": "social_only",
+    "check": null,
+    "mobileScore": null
+   },
+   "band": [
+    80,
+    89
+   ]
+  },
+  {
+   "desc": "wix site, mobile 15, dated",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 15,
+    "check": {
+     "ok": true,
+     "ssl": false,
+     "builder": "wix",
+     "copyrightYear": 2018,
+     "hasViewportMeta": false,
+     "hasContactForm": false,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    60,
+    80
+   ]
+  },
+  {
+   "desc": "wix site, mobile 25, dated",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 25,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "wix",
+     "copyrightYear": 2018,
+     "hasViewportMeta": false,
+     "hasContactForm": false,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    60,
+    80
+   ]
+  },
+  {
+   "desc": "wix site, mobile 35, dated",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 35,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "wix",
+     "copyrightYear": 2018,
+     "hasViewportMeta": true,
+     "hasContactForm": true,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    60,
+    80
+   ]
+  },
+  {
+   "desc": "wix site, mobile 45, dated",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 45,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "wix",
+     "copyrightYear": 2018,
+     "hasViewportMeta": true,
+     "hasContactForm": true,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    60,
+    80
+   ]
+  },
+  {
+   "desc": "godaddy site, mobile 15, dated",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 15,
+    "check": {
+     "ok": true,
+     "ssl": false,
+     "builder": "godaddy",
+     "copyrightYear": 2018,
+     "hasViewportMeta": false,
+     "hasContactForm": false,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    60,
+    80
+   ]
+  },
+  {
+   "desc": "godaddy site, mobile 25, dated",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 25,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "godaddy",
+     "copyrightYear": 2018,
+     "hasViewportMeta": false,
+     "hasContactForm": false,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    60,
+    80
+   ]
+  },
+  {
+   "desc": "godaddy site, mobile 35, dated",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 35,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "godaddy",
+     "copyrightYear": 2018,
+     "hasViewportMeta": true,
+     "hasContactForm": true,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    60,
+    80
+   ]
+  },
+  {
+   "desc": "godaddy site, mobile 45, dated",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 45,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "godaddy",
+     "copyrightYear": 2018,
+     "hasViewportMeta": true,
+     "hasContactForm": true,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    60,
+    80
+   ]
+  },
+  {
+   "desc": "weebly site, mobile 15, dated",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 15,
+    "check": {
+     "ok": true,
+     "ssl": false,
+     "builder": "weebly",
+     "copyrightYear": 2018,
+     "hasViewportMeta": false,
+     "hasContactForm": false,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    60,
+    80
+   ]
+  },
+  {
+   "desc": "weebly site, mobile 25, dated",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 25,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "weebly",
+     "copyrightYear": 2018,
+     "hasViewportMeta": false,
+     "hasContactForm": false,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    60,
+    80
+   ]
+  },
+  {
+   "desc": "weebly site, mobile 35, dated",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 35,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "weebly",
+     "copyrightYear": 2018,
+     "hasViewportMeta": true,
+     "hasContactForm": true,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    60,
+    80
+   ]
+  },
+  {
+   "desc": "weebly site, mobile 45, dated",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 45,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "weebly",
+     "copyrightYear": 2018,
+     "hasViewportMeta": true,
+     "hasContactForm": true,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    60,
+    80
+   ]
+  },
+  {
+   "desc": "wordpress site, mobile 15, dated",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 15,
+    "check": {
+     "ok": true,
+     "ssl": false,
+     "builder": "wordpress",
+     "copyrightYear": 2018,
+     "hasViewportMeta": false,
+     "hasContactForm": false,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    60,
+    80
+   ]
+  },
+  {
+   "desc": "wordpress site, mobile 25, dated",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 25,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "wordpress",
+     "copyrightYear": 2018,
+     "hasViewportMeta": false,
+     "hasContactForm": false,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    60,
+    80
+   ]
+  },
+  {
+   "desc": "wordpress site, mobile 35, dated",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 35,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "wordpress",
+     "copyrightYear": 2018,
+     "hasViewportMeta": true,
+     "hasContactForm": true,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    60,
+    80
+   ]
+  },
+  {
+   "desc": "wordpress site, mobile 45, dated",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 45,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "wordpress",
+     "copyrightYear": 2018,
+     "hasViewportMeta": true,
+     "hasContactForm": true,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    60,
+    80
+   ]
+  },
+  {
+   "desc": "duda site, mobile 15, dated",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 15,
+    "check": {
+     "ok": true,
+     "ssl": false,
+     "builder": "duda",
+     "copyrightYear": 2018,
+     "hasViewportMeta": false,
+     "hasContactForm": false,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    60,
+    80
+   ]
+  },
+  {
+   "desc": "duda site, mobile 25, dated",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 25,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "duda",
+     "copyrightYear": 2018,
+     "hasViewportMeta": false,
+     "hasContactForm": false,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    60,
+    80
+   ]
+  },
+  {
+   "desc": "duda site, mobile 35, dated",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 35,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "duda",
+     "copyrightYear": 2018,
+     "hasViewportMeta": true,
+     "hasContactForm": true,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    60,
+    80
+   ]
+  },
+  {
+   "desc": "duda site, mobile 45, dated",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 45,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "duda",
+     "copyrightYear": 2018,
+     "hasViewportMeta": true,
+     "hasContactForm": true,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    60,
+    80
+   ]
+  },
+  {
+   "desc": "wix, mobile 12, no ssl, © 2015, no viewport, no form (worst real site)",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 12,
+    "check": {
+     "ok": true,
+     "ssl": false,
+     "builder": "wix",
+     "copyrightYear": 2015,
+     "hasViewportMeta": false,
+     "hasContactForm": false,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    60,
+    80
+   ]
+  },
+  {
+   "desc": "godaddy, mobile 29, no form",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 29,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "godaddy",
+     "copyrightYear": 2019,
+     "hasViewportMeta": true,
+     "hasContactForm": false,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    60,
+    80
+   ]
+  },
+  {
+   "desc": "weebly, mobile 44, no viewport",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 44,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "weebly",
+     "copyrightYear": 2020,
+     "hasViewportMeta": false,
+     "hasContactForm": true,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    60,
+    80
+   ]
+  },
+  {
+   "desc": "custom site, mobile 50, current",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 50,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "custom",
+     "copyrightYear": 2024,
+     "hasViewportMeta": true,
+     "hasContactForm": true,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    20,
+    40
+   ]
+  },
+  {
+   "desc": "custom site, mobile 55, current",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 55,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "custom",
+     "copyrightYear": 2024,
+     "hasViewportMeta": true,
+     "hasContactForm": true,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    20,
+    40
+   ]
+  },
+  {
+   "desc": "custom site, mobile 60, current",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 60,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "custom",
+     "copyrightYear": 2024,
+     "hasViewportMeta": true,
+     "hasContactForm": true,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    20,
+    40
+   ]
+  },
+  {
+   "desc": "custom site, mobile 65, current",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 65,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "custom",
+     "copyrightYear": 2024,
+     "hasViewportMeta": true,
+     "hasContactForm": true,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    20,
+    40
+   ]
+  },
+  {
+   "desc": "custom site, mobile 70, current",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 70,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "custom",
+     "copyrightYear": 2024,
+     "hasViewportMeta": true,
+     "hasContactForm": true,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    20,
+    40
+   ]
+  },
+  {
+   "desc": "custom site, mobile 75, current",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 75,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "custom",
+     "copyrightYear": 2024,
+     "hasViewportMeta": true,
+     "hasContactForm": true,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    20,
+    40
+   ]
+  },
+  {
+   "desc": "custom, mobile 62, no contact form",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 62,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "custom",
+     "copyrightYear": 2024,
+     "hasViewportMeta": true,
+     "hasContactForm": false,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    20,
+    40
+   ]
+  },
+  {
+   "desc": "custom, mobile 58, older copyright",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 58,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "custom",
+     "copyrightYear": 2022,
+     "hasViewportMeta": true,
+     "hasContactForm": true,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    20,
+    40
+   ]
+  },
+  {
+   "desc": "custom, mobile 71, no ssl",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 71,
+    "check": {
+     "ok": true,
+     "ssl": false,
+     "builder": "custom",
+     "copyrightYear": 2024,
+     "hasViewportMeta": true,
+     "hasContactForm": true,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    20,
+    40
+   ]
+  },
+  {
+   "desc": "custom, mobile 55, © 2021 + no form",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 55,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "custom",
+     "copyrightYear": 2021,
+     "hasViewportMeta": true,
+     "hasContactForm": false,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    20,
+    41
+   ]
+  },
+  {
+   "desc": "custom, pagespeed unavailable, current",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": null,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "custom",
+     "copyrightYear": 2024,
+     "hasViewportMeta": true,
+     "hasContactForm": true,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    20,
+    45
+   ]
+  },
+  {
+   "desc": "custom, pagespeed unavailable, no form",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": null,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "custom",
+     "copyrightYear": 2024,
+     "hasViewportMeta": true,
+     "hasContactForm": false,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    20,
+    45
+   ]
+  },
+  {
+   "desc": "strong custom site, mobile 82, © 2026",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 82,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "custom",
+     "copyrightYear": 2026,
+     "hasViewportMeta": true,
+     "hasContactForm": true,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    0,
+    19
+   ]
+  },
+  {
+   "desc": "strong custom site, mobile 86, © 2025",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 86,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "custom",
+     "copyrightYear": 2025,
+     "hasViewportMeta": true,
+     "hasContactForm": true,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    0,
+    19
+   ]
+  },
+  {
+   "desc": "strong custom site, mobile 90, © 2026",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 90,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "custom",
+     "copyrightYear": 2026,
+     "hasViewportMeta": true,
+     "hasContactForm": true,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    0,
+    19
+   ]
+  },
+  {
+   "desc": "strong custom site, mobile 95, © 2026",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 95,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "custom",
+     "copyrightYear": 2026,
+     "hasViewportMeta": true,
+     "hasContactForm": true,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    0,
+    19
+   ]
+  },
+  {
+   "desc": "strong custom site, mobile 88, © 2026",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 88,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "custom",
+     "copyrightYear": 2026,
+     "hasViewportMeta": true,
+     "hasContactForm": true,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    0,
+    19
+   ]
+  },
+  {
+   "desc": "strong custom site, mobile 93, © 2025",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 93,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "custom",
+     "copyrightYear": 2025,
+     "hasViewportMeta": true,
+     "hasContactForm": true,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    0,
+    19
+   ]
+  },
+  {
+   "desc": "strong custom site, mobile 84, © 2026",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 84,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "custom",
+     "copyrightYear": 2026,
+     "hasViewportMeta": true,
+     "hasContactForm": true,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    0,
+    19
+   ]
+  },
+  {
+   "desc": "strong custom site, mobile 97, © 2026",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 97,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "custom",
+     "copyrightYear": 2026,
+     "hasViewportMeta": true,
+     "hasContactForm": true,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    0,
+    19
+   ]
+  },
+  {
+   "desc": "squarespace site, decent mobile 82",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 82,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "squarespace",
+     "copyrightYear": 2025,
+     "hasViewportMeta": true,
+     "hasContactForm": true,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    30,
+    55
+   ]
+  },
+  {
+   "desc": "squarespace site, decent mobile 74",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 74,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "squarespace",
+     "copyrightYear": 2025,
+     "hasViewportMeta": true,
+     "hasContactForm": true,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    30,
+    55
+   ]
+  },
+  {
+   "desc": "shopify site, decent mobile 85",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 85,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "shopify",
+     "copyrightYear": 2025,
+     "hasViewportMeta": true,
+     "hasContactForm": true,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    30,
+    55
+   ]
+  },
+  {
+   "desc": "wordpress site, decent mobile 78",
+   "input": {
+    "websiteClass": "real_site",
+    "mobileScore": 78,
+    "check": {
+     "ok": true,
+     "ssl": true,
+     "builder": "wordpress",
+     "copyrightYear": 2025,
+     "hasViewportMeta": true,
+     "hasContactForm": true,
+     "fetchedAt": "2026-09-03T12:00:00.000Z"
+    }
+   },
+   "band": [
+    30,
+    55
+   ]
+  }
+ ]
+}

@@ -8,7 +8,7 @@
 2. **Conflation false-merges** — two businesses sharing an office phone or a franchise domain collapsing into one lead. Mitigations: phone→domain→name+50m precedence with the never-merge-differing-verified-phones rule (G1d), conflicts stored with per-source attribution and shown in the drawer, conflation unit tests.
 3. **Owner-extraction hallucination** — reviewer names, franchise CEOs, web-designer credits extracted as owners. Mitigations: no-snippet-no-name enforced at schema level, role-tied-to-this-business prompt + heuristic rules, multi-location ⇒ low confidence, G5 golden set with must-not-extract traps.
 
-Watchlist #4: **real-release schema drift** — the real Overture extract SQL is written to the Sept-2026 schema but can only be proven against the live bucket (D9). A tiny-bbox live probe is attempted in P2; if the environment can't reach the bucket it moves to BLOCKERS.
+Watchlist #4 RESOLVED: live probe (scripts/probe-overture.ts) verified the 2026-08-19.0 schema and sample rows; the one drift (taxonomy.alternates) is fixed. Remaining real-mode risk: B5 taxonomy-value reconciliation, surfaced by the ingest gate.
 
 ## Protocol state
 
@@ -19,7 +19,7 @@ Watchlist #4: **real-release schema drift** — the real Overture extract SQL is
 
 - [x] P0 Blueprint (ARCHITECTURE, CONTRACTS, DECISIONS, STATUS, BLOCKERS; repo scaffolded: Next 16 + deps, native modules smoke-tested)
 - [x] P1 Data core (schema+migrations, normalize/identity, budget guard+intents, resumable worker, settings/secure-store/audit, provider interfaces; 27 tests green)
-- [ ] P2 Data & enrichment
+- [x] P2 Data & enrichment (fixtures via real DuckDB path; ingest+gate+conflation+chains; classification; polite fetcher; website check; scoring engine+rubric; owner heuristic+Haiku adapter; PageSpeed/Outscraper/Drive adapters + mocks; fan-out; goldens G1-G6 — 188 tests green. Live bucket probe verified release 2026-08-19.0 schema; fixed taxonomy.alternates drift)
 - [ ] P3 Campaign builder + pipeline + workspace UI
 - [ ] P4 Exports + suppression + audit
 - [ ] P5 Ops + #Z checklist

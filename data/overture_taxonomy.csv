@@ -1,0 +1,144 @@
+code,label,parent
+home_improvement,Home Improvement,
+roofing_contractor,Roofing Contractor,home_improvement
+roofing_service,Roofing Service,home_improvement
+gutter_service,Gutter Service,home_improvement
+siding_contractor,Siding Contractor,home_improvement
+window_installation_service,Window Installation Service,home_improvement
+door_installation_service,Door Installation Service,home_improvement
+garage_door_service,Garage Door Service,home_improvement
+fence_contractor,Fence Contractor,home_improvement
+deck_builder,Deck Builder,home_improvement
+concrete_contractor,Concrete Contractor,home_improvement
+masonry_contractor,Masonry Contractor,home_improvement
+paving_contractor,Paving Contractor,home_improvement
+foundation_repair_service,Foundation Repair Service,home_improvement
+waterproofing_service,Waterproofing Service,home_improvement
+insulation_contractor,Insulation Contractor,home_improvement
+drywall_contractor,Drywall Contractor,home_improvement
+painting_contractor,Painting Contractor,home_improvement
+flooring_contractor,Flooring Contractor,home_improvement
+carpet_installation_service,Carpet Installation Service,home_improvement
+tile_contractor,Tile Contractor,home_improvement
+countertop_installation_service,Countertop Installation Service,home_improvement
+cabinet_maker,Cabinet Maker,home_improvement
+general_contractor,General Contractor,home_improvement
+home_remodeling_service,Home Remodeling Service,home_improvement
+kitchen_remodeling_service,Kitchen Remodeling Service,home_improvement
+bathroom_remodeling_service,Bathroom Remodeling Service,home_improvement
+handyman_service,Handyman Service,home_improvement
+hvac_service,HVAC Service,home_improvement
+air_conditioning_contractor,Air Conditioning Contractor,home_improvement
+heating_contractor,Heating Contractor,home_improvement
+plumber,Plumber,home_improvement
+water_heater_installation_service,Water Heater Installation Service,home_improvement
+septic_system_service,Septic System Service,home_improvement
+well_drilling_service,Well Drilling Service,home_improvement
+electrician,Electrician,home_improvement
+solar_energy_contractor,Solar Energy Contractor,home_improvement
+landscaping_service,Landscaping Service,home_improvement
+lawn_care_service,Lawn Care Service,home_improvement
+tree_service,Tree Service,home_improvement
+irrigation_service,Irrigation Service,home_improvement
+pool_service,Pool Service,home_improvement
+pool_contractor,Pool Contractor,home_improvement
+pest_control_service,Pest Control Service,home_improvement
+wildlife_control_service,Wildlife Control Service,home_improvement
+pressure_washing_service,Pressure Washing Service,home_improvement
+window_cleaning_service,Window Cleaning Service,home_improvement
+gutter_cleaning_service,Gutter Cleaning Service,home_improvement
+chimney_sweep,Chimney Sweep,home_improvement
+house_cleaning_service,House Cleaning Service,home_improvement
+carpet_cleaning_service,Carpet Cleaning Service,home_improvement
+janitorial_service,Janitorial Service,home_improvement
+junk_removal_service,Junk Removal Service,home_improvement
+dumpster_rental_service,Dumpster Rental Service,home_improvement
+moving_company,Moving Company,professional_services
+storage_facility,Storage Facility,professional_services
+locksmith,Locksmith,professional_services
+security_system_installer,Security System Installer,professional_services
+appliance_repair_service,Appliance Repair Service,professional_services
+computer_repair_service,Computer Repair Service,professional_services
+professional_services,Professional Services,
+accountant,Accountant,professional_services
+bookkeeping_service,Bookkeeping Service,professional_services
+tax_preparation_service,Tax Preparation Service,professional_services
+insurance_agency,Insurance Agency,professional_services
+real_estate_agency,Real Estate Agency,professional_services
+property_management_company,Property Management Company,professional_services
+title_company,Title Company,professional_services
+lawyer,Lawyer,professional_services
+personal_injury_lawyer,Personal Injury Lawyer,professional_services
+family_law_attorney,Family Law Attorney,professional_services
+criminal_defense_lawyer,Criminal Defense Lawyer,professional_services
+estate_planning_attorney,Estate Planning Attorney,professional_services
+immigration_attorney,Immigration Attorney,professional_services
+notary_public,Notary Public,professional_services
+marketing_agency,Marketing Agency,professional_services
+photographer,Photographer,professional_services
+automotive,Automotive,
+auto_repair_shop,Auto Repair Shop,automotive
+auto_body_shop,Auto Body Shop,automotive
+tire_shop,Tire Shop,automotive
+oil_change_service,Oil Change Service,automotive
+car_detailing_service,Car Detailing Service,automotive
+car_wash,Car Wash,automotive
+towing_service,Towing Service,automotive
+auto_glass_service,Auto Glass Service,automotive
+transmission_repair_service,Transmission Repair Service,automotive
+health_and_medical,Health & Medical,
+dentist,Dentist,health_and_medical
+orthodontist,Orthodontist,health_and_medical
+chiropractor,Chiropractor,health_and_medical
+physical_therapist,Physical Therapist,health_and_medical
+optometrist,Optometrist,health_and_medical
+veterinarian,Veterinarian,health_and_medical
+med_spa,Med Spa,health_and_medical
+massage_therapist,Massage Therapist,health_and_medical
+counseling_service,Counseling Service,health_and_medical
+beauty_and_personal_care,Beauty & Personal Care,
+barber_shop,Barber Shop,beauty_and_personal_care
+hair_salon,Hair Salon,beauty_and_personal_care
+nail_salon,Nail Salon,beauty_and_personal_care
+tattoo_studio,Tattoo Studio,beauty_and_personal_care
+tanning_salon,Tanning Salon,beauty_and_personal_care
+eat_and_drink,Eat & Drink,
+restaurant,Restaurant,eat_and_drink
+cafe,Cafe,eat_and_drink
+bakery,Bakery,eat_and_drink
+food_truck,Food Truck,eat_and_drink
+catering_service,Catering Service,eat_and_drink
+bar,Bar,eat_and_drink
+fitness_and_recreation,Fitness & Recreation,
+gym,Gym,fitness_and_recreation
+yoga_studio,Yoga Studio,fitness_and_recreation
+martial_arts_school,Martial Arts School,fitness_and_recreation
+dance_school,Dance School,fitness_and_recreation
+pets,Pets,
+pet_groomer,Pet Groomer,pets
+pet_boarding_service,Pet Boarding Service,pets
+dog_trainer,Dog Trainer,pets
+education_and_childcare,Education & Childcare,
+day_care_center,Day Care Center,education_and_childcare
+tutoring_service,Tutoring Service,education_and_childcare
+driving_school,Driving School,education_and_childcare
+retail,Retail,
+florist,Florist,retail
+furniture_store,Furniture Store,retail
+appliance_store,Appliance Store,retail
+roofing_supply_store,Roofing Supply Store,retail
+plumbing_supply_store,Plumbing Supply Store,retail
+electrical_supply_store,Electrical Supply Store,retail
+garden_center,Garden Center,retail
+funeral_home,Funeral Home,professional_services
+event_planning_service,Event Planning Service,professional_services
+wedding_venue,Wedding Venue,professional_services
+sign_shop,Sign Shop,professional_services
+printing_service,Printing Service,professional_services
+laundromat,Laundromat,professional_services
+dry_cleaner,Dry Cleaner,professional_services
+tailor,Tailor,professional_services
+shoe_repair_shop,Shoe Repair Shop,professional_services
+watch_repair_service,Watch Repair Service,professional_services
+jewelry_store,Jewelry Store,retail
+pawn_shop,Pawn Shop,retail

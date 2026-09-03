@@ -10,7 +10,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "fixtures": "tsx scripts/generate-fixtures.ts",
+    "golden:owner": "tsx scripts/generate-owner-golden.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.123.0",

@@ -1,0 +1,14 @@
+{
+  "_review": "HUMAN_CHECK #C — review these defaults (DECISIONS D5). The UA string identifies our fetches; the export exclusions are the §3.5/§3.6 defaults; the CAN-SPAM checklist renders wherever emails are exported.",
+  "userAgent": "LeadForgeBot/1.0 (+https://gemfieldconsulting.com/leadforge; internal lead research; contact: it3.digitalconnections@gmail.com)",
+  "exportExcludesStatuses": ["dnc", "not_interested"],
+  "dncProcess": "Numbers/domains scrubbed against the National DNC registry are imported under Suppressions (kind=dnc). Suppressed leads never export and show a badge. Per-lead one-click DNC is immediate and audit-logged.",
+  "canSpamChecklist": [
+    "Identify the sender honestly (Gemfield Consulting, real reply-to).",
+    "Include the physical postal address in every email.",
+    "Provide a working unsubscribe honored within 10 business days.",
+    "No deceptive subject lines.",
+    "LeadForge stores and exports business emails; it never sends outreach."
+  ],
+  "dataHygiene": "Business-public data only. No scraping of personal social profiles. Owner extraction is limited to the business's own website."
+}

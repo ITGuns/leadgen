@@ -93,17 +93,18 @@ Every stage: batch loop → checkpoint job progress → honor pause/cancel betwe
   "baseChips": { "none": "No website", "dead": "Dead site", "parked": "Parked domain",
                  "aggregator": "Aggregator listing only", "social_only": "Social-only presence" },
   "modifiers": [                        // apply only when base = real_site
-    { "cond": "builder", "add": 25, "chip": "Built on {builder}" },
-    { "cond": "mobile_below", "arg": 50, "add": 15, "chip": "Mobile score {mobileScore}" },
-    { "cond": "mobile_below", "arg": 30, "add": 10, "chip": "Very poor mobile" },
-    { "cond": "no_ssl", "add": 8, "chip": "No SSL" },
-    { "cond": "copyright_older_than", "arg": 3, "add": 6, "chip": "© {copyrightYear}" },
-    { "cond": "no_viewport", "add": 6, "chip": "Not mobile-friendly" },
-    { "cond": "no_contact_form", "add": 4, "chip": "No contact form" },
+    { "cond": "builder", "add": 20, "chip": "Built on {builder}" },
+    { "cond": "mobile_below", "arg": 50, "add": 10, "chip": "Mobile score {mobileScore}" },
+    { "cond": "mobile_below", "arg": 30, "add": 5, "chip": "Very poor mobile" },
+    { "cond": "no_ssl", "add": 4, "chip": "No SSL" },
+    { "cond": "copyright_older_than", "arg": 3, "add": 4, "chip": "© {copyrightYear}" },
+    { "cond": "no_viewport", "add": 4, "chip": "Not mobile-friendly" },
+    { "cond": "no_contact_form", "add": 3, "chip": "No contact form" },
     { "cond": "mobile_at_least", "arg": 80, "add": -12, "chip": "Fast mobile site" },
     { "cond": "custom_recent", "add": -8, "chip": "Modern custom site" } ],
   "clamp": [0, 100] }
 ```
+Weights are calibrated so the worst real site (builder + all penalties) sums to exactly the 80 band ceiling: 30+20+10+5+4+4+4+3 = 80.
 Engine: pick base by websiteClass; for `real_site` apply matching modifiers in order; clamp. Conditions are a fixed enum implemented in `scoring/score.ts`. Expected bands (golden G4): none/dead/parked/aggregator ⇒ ≥90 · social_only 80–89 · builder+poor mobile 60–80 · decent 20–40 · strong <20.
 
 ## C9. Provider interfaces (`src/server/providers/types.ts`)
