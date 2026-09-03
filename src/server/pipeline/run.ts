@@ -251,7 +251,7 @@ async function stagePull(c: Campaign, ctx: JobContext, progress: { cityIndex?: n
           const submitted = await provider.submit(query);
           providerJobId = submitted.providerJobId;
           updateIntent(intent.id, { status: "submitted", providerJobId });
-        } catch (err) {
+        } catch {
           updateIntent(intent.id, { status: "abandoned" });
           bumpError(c.id, "pull");
           continue;

@@ -50,7 +50,7 @@ export function domainOf(raw: string | null | undefined): string | null {
 
 export function normalizeName(raw: string | null | undefined): string {
   if (!raw) return "";
-  let s = String(raw)
+  const s = String(raw)
     .normalize("NFKD")
     .replace(/[̀-ͯ]/g, "") // strip diacritics
     .toLowerCase()

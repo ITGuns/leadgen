@@ -132,6 +132,7 @@ export default function NewCampaignPage() {
           <input className="input flex-1" placeholder='Niche, e.g. "roofers"' value={niche} onChange={(e) => { setNiche(e.target.value); setProposal(null); setMappingConfirmed(false); }} />
           <button className="btn" onClick={propose} disabled={niche.trim().length < 2}>Propose categories</button>
         </div>
+        <input className="input w-full" placeholder="Campaign name (optional — auto-named from niche + states)" value={name} onChange={(e) => setName(e.target.value)} />
         {proposal && (
           <div className="space-y-2">
             <div className="text-xs text-zinc-500">

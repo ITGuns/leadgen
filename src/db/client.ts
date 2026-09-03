@@ -34,7 +34,7 @@ export function getSqlite(): Database.Database {
 }
 
 /** Test helper: swap the singleton for an isolated in-memory database. */
-export function useTestDatabase(): { db: DB; sqlite: Database.Database } {
+export function openTestDatabase(): { db: DB; sqlite: Database.Database } {
   const opened = openDatabase(":memory:");
   g.__leadforgeDb = opened;
   return opened;
