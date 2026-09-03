@@ -33,7 +33,7 @@ score (0–100), scoreReasons `[{chip,points,detail?}]`, websiteCheck json (C6),
 `campaigns` — niche, confirmedTaxonomy string[], states string[], cityList?, filters `{hasWebsite:any|yes|no, minConfidence(0.6), hasPhone, operatingOnly, sources, excludeChains, includeContactless:false}`, caps `{maxRecords, budgetCapUSD}`, smoke bool, aiOwnerExtraction bool, topUp `{enabled:false, provider, capUSD}`, status `draft·running·paused·completed·canceled·failed`, releaseOverture/releaseFsq (recorded at plan time — reproducibility), estimate json, spendUSD, stageCounts json, createdBy, per-stage error counts.
 `campaign_leads` — (campaignId, leadId) unique; how a lead accrues campaign history.
 
-Support tables: `places_overture`, `places_fsq`, `releases`, `jobs`, `intents`, `suppressions` (kind `client·dnc`, phone/domain normalized), `audit_log`, `taxonomy_mappings` (niche→set, confirmedBy/At, timesUsed), `pagespeed_cache` (domain pk, 30-day TTL), `quota_usage` (provider+day), `spend_ledger`, `notes`, `exports` (params, status, path, rowCount, driveLink).
+Support tables: `places_overture`, `places_fsq`, `releases`, `jobs` (incl. `runAfter` for backoff/cron), `intents`, `suppressions` (kind `client·dnc`, phone/domain normalized), `audit_log`, `taxonomy_mappings` (niche→set, confirmedBy/At, timesUsed), `pagespeed_cache` (domain pk, 30-day TTL), `quota_usage` (provider+day), `spend_ledger`, `notes`, `exports` (params, status, path, rowCount, driveLink), `app_settings` (runtime-tunable ops knobs; never secrets), `chains`.
 
 ## C2. Normalization (deterministic, property-tested)
 

@@ -18,7 +18,7 @@ Watchlist #4: **real-release schema drift** — the real Overture extract SQL is
 ## Phase progress
 
 - [x] P0 Blueprint (ARCHITECTURE, CONTRACTS, DECISIONS, STATUS, BLOCKERS; repo scaffolded: Next 16 + deps, native modules smoke-tested)
-- [ ] P1 Data core — next: schema.ts + migrations, normalize/identity + property tests, jobs worker, budget guard + invariant test, mock providers
+- [x] P1 Data core (schema+migrations, normalize/identity, budget guard+intents, resumable worker, settings/secure-store/audit, provider interfaces; 27 tests green)
 - [ ] P2 Data & enrichment
 - [ ] P3 Campaign builder + pipeline + workspace UI
 - [ ] P4 Exports + suppression + audit
