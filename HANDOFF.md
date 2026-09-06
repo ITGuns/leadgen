@@ -21,7 +21,7 @@
 ## Ops
 - **Backups**: nightly 03:15 via SQLite online-backup → gzip → `/data/backups` (30-day retention) → Drive when connected. "Backup now" in Settings. Restore = stop app, gunzip over `/data/leadforge.db`, start.
 - **Deploy**: `docker compose up -d --build`. The `/data` volume is never touched by a redeploy. No inbound ports; cloudflared dials out.
-- **Access**: Cloudflare Access (Google IdP, `@gemfieldconsulting.com` policy) in front; the app independently verifies the Access JWT on every request (G8) — if you ever expose the app another way, that guard is the only door: **don't**.
+- **Access**: Cloudflare Access (Google IdP, `@gemfieldconsulting.com` policy) in front; the app independently verifies the Access JWT on every request (G8) — if you ever expose the app another way, that guard is the only door: **don't**. Documented alternative (§2 of the build guide): a **Tailscale** tailnet instead of the tunnel — pure private network, no public hostname. Be aware v1's in-app guard is built for Access JWTs: with Access unset it locks everyone out (fail-closed, on purpose), so going Tailscale-only means consciously adding a trusted-network mode to `src/proxy.ts`/`src/server/auth.ts` and accepting network-level trust in place of per-user identity. Record that as a DECISIONS entry if you do it; don't quietly weaken the door.
 - **Health**: `/api/health` (only unauthenticated route; no data). Docker healthcheck uses it.
 - Jobs are resumable rows in the `jobs` table; a crash/restart resumes from checkpoints without double-billing (intents). Failed jobs show `lastError` in Settings → Data.
 

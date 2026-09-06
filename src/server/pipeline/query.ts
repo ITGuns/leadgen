@@ -23,8 +23,17 @@ export function candidateConditions(campaign: Campaign): SQL {
   parts.push(sql`${businesses.region} IN (${stateList})`);
 
   if (campaign.cityList?.length) {
-    const cityList = sql.join(campaign.cityList.map((c) => sql`${c.toLowerCase().trim()}`), sql`, `);
-    parts.push(sql`lower(coalesce(${businesses.city}, '')) IN (${cityList})`);
+    // §3.1 — "optional city/ZIP list upload for precision": 5-digit entries match postal,
+    // everything else matches the city name; a business passes on either.
+    const entries = campaign.cityList.map((c) => c.trim()).filter(Boolean);
+    const zips = entries.filter((c) => /^\d{5}$/.test(c));
+    const cities = entries.filter((c) => !/^\d{5}$/.test(c)).map((c) => c.toLowerCase());
+    const geoParts: SQL[] = [];
+    if (cities.length)
+      geoParts.push(sql`lower(coalesce(${businesses.city}, '')) IN (${sql.join(cities.map((c) => sql`${c}`), sql`, `)})`);
+    if (zips.length)
+      geoParts.push(sql`coalesce(${businesses.postal}, '') IN (${sql.join(zips.map((z) => sql`${z}`), sql`, `)})`);
+    if (geoParts.length) parts.push(sql`(${sql.join(geoParts, sql` OR `)})`);
   }
 
   // "open" filter excludes confirmed-closed; unknown/null pass (real data is often null — probe 2026-09-03)

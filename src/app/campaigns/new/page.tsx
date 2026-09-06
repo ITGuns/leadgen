@@ -171,7 +171,7 @@ export default function NewCampaignPage() {
             </button>
           ))}
         </div>
-        <textarea className="input h-16 w-full" placeholder="Optional: limit to specific cities (one per line or comma-separated)" value={cityList} onChange={(e) => setCityList(e.target.value)} />
+        <textarea className="input h-16 w-full" placeholder="Optional: limit to specific cities or 5-digit ZIPs (one per line or comma-separated)" value={cityList} onChange={(e) => setCityList(e.target.value)} />
       </section>
 
       <section className="card space-y-3">
