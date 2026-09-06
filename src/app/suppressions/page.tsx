@@ -35,7 +35,7 @@ export default function SuppressionsPage() {
   return (
     <div className="max-w-3xl space-y-4">
       <h1 className="text-xl font-bold">Suppressions</h1>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="card">
           <div className="text-xs text-zinc-500">Do-not-prospect (existing clients)</div>
           <div className="mt-1 text-2xl font-bold">{data?.counts.client ?? "…"}</div>

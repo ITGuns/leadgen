@@ -144,7 +144,7 @@ function SettingsInner() {
 
       <section className="card space-y-3">
         <h2 className="text-sm font-semibold text-zinc-300">Spend & quotas</h2>
-        <div className="grid grid-cols-3 gap-3 text-sm">
+        <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
           <div>Spend this month: <b>{fmtUSD(data.ops.monthSpendUSD)}</b></div>
           <label className="flex items-center gap-2">Monthly ceiling $<input className="input w-24" value={ceilingDraft} onChange={(e) => setCeilingDraft(e.target.value)} />
             <button className="btn py-1 text-xs" onClick={() => save({ monthlySpendCeilingUSD: Number(ceilingDraft) }, "Ceiling saved.")}>Set</button></label>

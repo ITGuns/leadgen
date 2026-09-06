@@ -161,7 +161,7 @@ function LeadsWorkspace() {
 
       {detail && (
         <div className="fixed inset-0 z-40 flex justify-end bg-black/50" onClick={() => setDetail(null)}>
-          <div className="h-full w-[520px] overflow-y-auto border-l border-zinc-800 bg-zinc-950 p-5" onClick={(e) => e.stopPropagation()}>
+          <div className="h-full w-full max-w-[520px] overflow-y-auto border-l border-zinc-800 bg-zinc-950 p-5" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between">
               <div>
                 <h2 className="text-lg font-bold">{detail.business.name}</h2>

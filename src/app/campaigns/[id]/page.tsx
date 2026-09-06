@@ -86,7 +86,7 @@ export default function CampaignDetail({ params }: { params: Promise<{ id: strin
 
       {error && <div className="rounded-md border border-red-800 bg-red-950/60 px-3 py-2 text-sm text-red-300">{error}</div>}
 
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <div className="card"><div className="text-xs text-zinc-500">Status</div><div className="mt-0.5 text-lg font-bold capitalize">{c.status}</div></div>
         <div className="card"><div className="text-xs text-zinc-500">Leads</div><div className="mt-0.5 text-lg font-bold">{data.leadCount.toLocaleString()}</div></div>
         <div className="card"><div className="text-xs text-zinc-500">Cost accrued</div><div className="mt-0.5 text-lg font-bold">{fmtUSD(data.spendUSD)}</div><div className="text-[11px] text-zinc-500">cap {fmtUSD(c.caps.budgetCapUSD)}</div></div>

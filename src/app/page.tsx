@@ -25,7 +25,7 @@ export default function Dashboard() {
         <Link href="/campaigns/new" className="btn btn-primary">New campaign</Link>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="card"><div className="text-xs text-zinc-500">Businesses in local DB</div>
           <div className="mt-1 text-2xl font-bold">{stats.businessCount.toLocaleString()}</div>
           <div className="mt-1 text-[11px] text-zinc-500">Overture {overture?.releaseId ?? "— run ingest"} · FSQ {fsq?.releaseId ?? "—"}</div></div>
