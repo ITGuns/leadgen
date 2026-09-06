@@ -3,6 +3,7 @@ import { and, asc, desc, eq, isNull, lte, or, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { jobs } from "@/db/schema";
 import { defaults, now } from "../config";
+import { getSetting } from "../settings";
 import { getHandler, JobStopped, type JobRow } from "./registry";
 
 /**
@@ -196,6 +197,11 @@ export class Worker {
           .set({ status: "failed", lastError: message, finishedAt: now().toISOString() })
           .where(and(eq(jobs.id, id), eq(jobs.status, "running")))
           .run();
+        const { notifyFailure } = await import("../notify");
+        void notifyFailure(
+          `job #${id} (${job.type}) failed after ${attempts} attempt(s)`,
+          `${message}${job.campaignId ? ` · campaign #${job.campaignId}` : ""}`,
+        );
       }
     } finally {
       clearInterval(heartbeat);
@@ -207,6 +213,9 @@ type G = typeof globalThis & { __leadforgeWorker?: Worker };
 const g = globalThis as G;
 
 export function getWorker(): Worker {
-  if (!g.__leadforgeWorker) g.__leadforgeWorker = new Worker();
+  if (!g.__leadforgeWorker) {
+    // §3.7 — jobConcurrency is Settings-tunable; the singleton reads it at boot
+    g.__leadforgeWorker = new Worker(getSetting("jobConcurrency", defaults.jobConcurrency));
+  }
   return g.__leadforgeWorker;
 }

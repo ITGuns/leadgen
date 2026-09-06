@@ -1,6 +1,6 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
-import { businesses, placesFsq, placesOverture, type BusinessSources } from "@/db/schema";
+import { businesses, placesFsq, placesOverture, releases, type BusinessSources } from "@/db/schema";
 import { classifyStatic } from "../classify";
 import { now } from "../config";
 import { identityKeyFor } from "../identity";
@@ -26,9 +26,11 @@ export async function runConflate(ctx: JobContext): Promise<void> {
 
   // ---- 1) Overture rows → businesses upsert (batched, resumable) ----
   const progress = (ctx.job.progress ?? {}) as { offset?: number; fsqDone?: boolean; stats?: ConflateStats };
-  const stats: ConflateStats = progress.stats ?? {
+  const stats: ConflateStats = {
     overtureUpserts: 0, fsqMatchedPhone: 0, fsqMatchedDomain: 0, fsqMatchedNameLoc: 0,
     fsqConflictSkips: 0, fsqFilledPhones: 0, fsqFilledWebsites: 0, fsqFilledEmails: 0, chainsFlagged: 0,
+    created: 0, changedWebsites: 0, changedPhones: 0, disappeared: 0,
+    ...(progress.stats ?? {}),
   };
   const BATCH = 500;
   if (!progress.fsqDone) {
@@ -72,6 +74,10 @@ export async function runConflate(ctx: JobContext): Promise<void> {
           if (existing) {
             // keep a fetched classification unless the website itself changed
             const websiteChanged = (websiteRaw ?? null) !== (existing.websiteRaw ?? null);
+            // §4.0 release diff: count changes only across releases, so a same-release re-run diffs to zero
+            const fromPriorRelease = existing.lastSeenRelease !== overtureRel.releaseId;
+            if (fromPriorRelease && websiteChanged) stats.changedWebsites++;
+            if (fromPriorRelease && phone && existing.phone && phone !== existing.phone) stats.changedPhones++;
             const websiteClass = websiteChanged
               ? staticClass
               : existing.websiteClass === "unknown" ? staticClass : existing.websiteClass;
@@ -89,6 +95,7 @@ export async function runConflate(ctx: JobContext): Promise<void> {
                 createdAt: ts,
               })
               .run();
+            stats.created++;
           }
           stats.overtureUpserts++;
         }
@@ -183,6 +190,28 @@ export async function runConflate(ctx: JobContext): Promise<void> {
 
   // ---- 3) chain flagging (§4.2) ----
   stats.chainsFlagged = flagChains();
+
+  // ---- 4) release diff summary (§4.0): new / changed / disappeared, stored on the
+  // active release row and rendered in Settings; disappeared records feed §4.5 ----
+  stats.disappeared =
+    db
+      .select({ n: sql<number>`count(*)` })
+      .from(businesses)
+      .where(sql`${businesses.gersId} IS NOT NULL AND coalesce(${businesses.lastSeenRelease}, '') != ${overtureRel.releaseId}`)
+      .get()?.n ?? 0;
+  const relRow = db.select().from(releases).where(eq(releases.id, overtureRel.id)).get();
+  const gateReport = {
+    ...((relRow?.gateReport as Record<string, unknown> | null) ?? {}),
+    diff: {
+      new: stats.created,
+      changedWebsites: stats.changedWebsites,
+      changedPhones: stats.changedPhones,
+      disappeared: stats.disappeared,
+      computedAt: now().toISOString(),
+    },
+  };
+  db.update(releases).set({ gateReport }).where(eq(releases.id, overtureRel.id)).run();
+
   ctx.checkpoint({ fsqDone: true, stats });
 }
 
@@ -196,6 +225,11 @@ export type ConflateStats = {
   fsqFilledWebsites: number;
   fsqFilledEmails: number;
   chainsFlagged: number;
+  // §4.0 release diff (relative to whatever the businesses table held before this run)
+  created: number;
+  changedWebsites: number;
+  changedPhones: number;
+  disappeared: number;
 };
 
 /** Businesses that disappeared from the active release (freshness §4.5). */

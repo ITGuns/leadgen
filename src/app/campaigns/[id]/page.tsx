@@ -80,6 +80,9 @@ export default function CampaignDetail({ params }: { params: Promise<{ id: strin
           {["draft", "failed", "canceled"].includes(c.status) && <button className="btn btn-primary" onClick={() => action("run")}>Run</button>}
           {c.status === "running" && <button className="btn" onClick={() => action("pause")}>Pause</button>}
           {c.status === "paused" && <button className="btn btn-primary" onClick={() => action("resume")}>Resume</button>}
+          {["completed", "failed"].includes(c.status) && Object.values(errors).some((n) => n > 0) && (
+            <button className="btn" onClick={() => action("retry_errors")}>Retry {Object.values(errors).reduce((a, b) => a + b, 0)} errors</button>
+          )}
           {["running", "paused", "draft"].includes(c.status) && <button className="btn btn-danger" onClick={() => action("cancel")}>Cancel</button>}
         </div>
       </div>

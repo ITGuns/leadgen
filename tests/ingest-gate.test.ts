@@ -28,6 +28,10 @@ describe("G1 · ingest + conflation over mock parquet", () => {
     expect(rel!.rowCounts!.TX).toBeGreaterThan(800);
     expect(rel!.rowCounts!.FL).toBeGreaterThan(450);
     expect(rel!.rowCounts!.GA).toBeGreaterThan(300);
+    const diff = (rel!.gateReport as { diff?: { new: number; disappeared: number } } | null)?.diff;
+    expect(diff).toBeTruthy();
+    expect(diff!.new).toBeGreaterThan(1900); // first ingest: everything is new
+    expect(diff!.disappeared).toBe(0);
     const total = db.select({ n: sql<number>`count(*)` }).from(placesOverture).get()!.n;
     const sum = Object.values(rel!.rowCounts!).reduce((a, b) => a + b, 0);
     // address-less rows in overlapping state bboxes are counted per-state but stored
@@ -127,6 +131,10 @@ describe("G1 · ingest + conflation over mock parquet", () => {
     const afterIds = db.select({ id: businesses.id }).from(businesses).orderBy(businesses.id).all().map((r) => r.id);
     expect(after).toBe(before);
     expect(afterIds).toEqual(beforeIds); // business ids stable across re-ingest — leads never detach
+    // §4.0 release diff: a same-release re-run diffs to zero on every axis
+    const rel = db.select().from(releases).where(and(eq(releases.source, "overture"), eq(releases.status, "active"))).get()!;
+    const diff = (rel.gateReport as { diff?: { new: number; changedWebsites: number; changedPhones: number; disappeared: number } } | null)?.diff;
+    expect(diff).toEqual(expect.objectContaining({ new: 0, changedWebsites: 0, changedPhones: 0, disappeared: 0 }));
   }, 180_000);
 
   it("row-count band: a state suddenly losing >40% fails the gate and keeps the previous release", () => {

@@ -33,6 +33,8 @@ export const env = {
   overtureBaseUrl: () => process.env.OVERTURE_BASE_URL || "s3://overturemaps-us-west-2/release",
   fsqRelease: () => process.env.FSQ_RELEASE || "",
   fsqBaseUrl: () => process.env.FSQ_BASE_URL || "",
+  // FSQ OS Places moved to gated HF distribution (free account, auto-approved) — probed 2026-09-06, see BLOCKERS B6
+  hfToken: () => process.env.HF_TOKEN || "",
 
   pagespeedApiKey: () => process.env.PAGESPEED_API_KEY || "",
   googleClientId: () => process.env.GOOGLE_OAUTH_CLIENT_ID || "",

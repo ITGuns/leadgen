@@ -33,16 +33,50 @@ export class RealDrive implements DrivePort {
     const data = (await res.json()) as { id: string; webViewLink?: string };
     return { id: data.id, webViewLink: data.webViewLink ?? `https://drive.google.com/file/d/${data.id}/view` };
   }
+
+  async ensureFolder(name: string, parentId: string): Promise<{ id: string }> {
+    const token = await accessToken();
+    const safeName = name.replaceAll("\\", "").replaceAll("'", "\\'");
+    const q = `name='${safeName}' and '${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+    const searchUrl = new URL("https://www.googleapis.com/drive/v3/files");
+    searchUrl.searchParams.set("q", q);
+    searchUrl.searchParams.set("supportsAllDrives", "true");
+    searchUrl.searchParams.set("includeItemsFromAllDrives", "true");
+    searchUrl.searchParams.set("fields", "files(id)");
+    const found = await fetch(searchUrl, { headers: { authorization: `Bearer ${token}` } });
+    if (!found.ok) throw new Error(`drive folder search failed (${found.status}): ${(await found.text()).slice(0, 300)}`);
+    const existing = ((await found.json()) as { files?: { id: string }[] }).files?.[0];
+    if (existing) return { id: existing.id };
+    const created = await fetch("https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=id", {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify({ name, mimeType: "application/vnd.google-apps.folder", parents: parentId ? [parentId] : undefined }),
+    });
+    if (!created.ok) throw new Error(`drive folder create failed (${created.status}): ${(await created.text()).slice(0, 300)}`);
+    return { id: ((await created.json()) as { id: string }).id };
+  }
 }
 
 export class MockDrive implements DrivePort {
   readonly name = "mock";
-  async upload(localPath: string, name: string): Promise<{ id: string; webViewLink: string }> {
-    const dir = path.join(env.exportsDir(), "drive-mock");
+
+  private root(): string {
+    return path.join(env.exportsDir(), "drive-mock");
+  }
+
+  async upload(localPath: string, name: string, folderId: string): Promise<{ id: string; webViewLink: string }> {
+    // mock folder ids are sanitized directory names produced by ensureFolder below
+    const dir = folderId && /^[\w#·& -]{1,80}$/.test(folderId) ? path.join(this.root(), folderId) : this.root();
     fs.mkdirSync(dir, { recursive: true });
     const dest = path.join(dir, name);
     fs.copyFileSync(localPath, dest);
     return { id: `mock-${name}`, webViewLink: `file://${dest}` };
+  }
+
+  async ensureFolder(name: string): Promise<{ id: string }> {
+    const safe = name.replace(/[^\w#·& -]/g, "_").slice(0, 80) || "folder";
+    fs.mkdirSync(path.join(this.root(), safe), { recursive: true });
+    return { id: safe };
   }
 }
 

@@ -1,5 +1,5 @@
 import { withAuth } from "@/server/auth";
-import { cancelCampaign, getCampaign, pauseCampaign, resumeCampaign, startCampaign } from "@/server/campaigns";
+import { cancelCampaign, getCampaign, pauseCampaign, resumeCampaign, retryErrors, startCampaign } from "@/server/campaigns";
 
 export const POST = withAuth(async (req, identity, ctx) => {
   const { id } = await ctx.params;
@@ -18,6 +18,8 @@ export const POST = withAuth(async (req, identity, ctx) => {
     case "cancel":
       cancelCampaign(campaignId, identity.email);
       return Response.json({ ok: true });
+    case "retry_errors":
+      return Response.json({ ok: true, ...retryErrors(campaignId, identity.email) });
     default:
       return Response.json({ error: "unknown action" }, { status: 400 });
   }

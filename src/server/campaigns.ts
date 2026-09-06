@@ -1,6 +1,6 @@
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
-import { campaigns, type CampaignCaps, type CampaignFilters, type CampaignTopUp } from "@/db/schema";
+import { campaigns, leads, type CampaignCaps, type CampaignFilters, type CampaignTopUp } from "@/db/schema";
 import { z } from "zod";
 import { audit } from "./audit";
 import { defaults, now } from "./config";
@@ -108,6 +108,38 @@ export function cancelCampaign(id: number, actor: string): void {
     db.update(campaigns).set({ status: "canceled", completedAt: now().toISOString() }).where(eq(campaigns.id, id)).run();
   }
   audit(actor, "campaign.cancel", { id });
+}
+
+/**
+ * §3.2 — per-stage error counts WITH retry. Clears the failure markers left by the
+ * website-check ('other' errors only — dead/timeout are classifications, not errors)
+ * and PageSpeed (-1 sentinel) stages for this campaign's leads, then re-enqueues the
+ * run; idempotent stages redo exactly the cleared work and re-score.
+ */
+export function retryErrors(id: number, actor: string) {
+  const db = getDb();
+  const c = db.select().from(campaigns).where(eq(campaigns.id, id)).get();
+  if (!c) throw new Error("campaign not found");
+  if (!["completed", "failed"].includes(c.status)) throw new Error("retry is for completed/failed campaigns");
+  const inCampaign = sql`${leads.id} IN (SELECT lead_id FROM campaign_leads WHERE campaign_id = ${id})`;
+  const ts = now().toISOString();
+  const wc = db
+    .update(leads)
+    .set({ websiteCheck: null, updatedAt: ts })
+    .where(sql`${inCampaign} AND json_extract(${leads.websiteCheck}, '$.error') = 'other'`)
+    .run();
+  const ps = db
+    .update(leads)
+    .set({ pagespeed: null, updatedAt: ts })
+    .where(sql`${inCampaign} AND json_extract(${leads.pagespeed}, '$.mobileScore') = -1`)
+    .run();
+  db.update(campaigns)
+    .set({ stageErrors: {}, status: "running", pauseRequested: false, cancelRequested: false })
+    .where(eq(campaigns.id, id))
+    .run();
+  enqueueJob("campaign_run", { campaignId: id }, { campaignId: id, dedupe: true });
+  audit(actor, "campaign.retry_errors", { id, websiteChecksCleared: wc.changes, pagespeedCleared: ps.changes });
+  return { websiteChecksCleared: wc.changes, pagespeedCleared: ps.changes };
 }
 
 export function listCampaigns() {

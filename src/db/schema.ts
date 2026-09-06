@@ -376,7 +376,8 @@ export type ExportParams = {
   columns: string[];
   includeExcluded: boolean; // include DNC / not_interested (audit-logged)
   leadIds?: number[];
-  driveSubfolder?: string;
+  toDrive?: boolean;
+  driveSubfolder?: string; // §3.5 optional per-campaign subfolder (created under the configured folder)
 };
 
 export const exportsTable = sqliteTable(

@@ -4,7 +4,7 @@ import { withAuth } from "@/server/auth";
 import { audit } from "@/server/audit";
 import { defaults, env } from "@/server/config";
 import { getSetting, setSetting } from "@/server/settings";
-import { secureSet } from "@/server/secure-store";
+import { effectiveSecret, secureSet } from "@/server/secure-store";
 import { anthropicKey } from "@/server/providers/ai";
 import { pagespeedKey, pagespeedQuotaRemaining } from "@/server/providers/pagespeed";
 import { outscraperKey } from "@/server/providers/listings/outscraper";
@@ -24,6 +24,8 @@ export const GET = withAuth(async () => {
       outscraper: !!outscraperKey(),
       googleClientId: !!googleClientId(),
       googleClientSecret: !!googleClientSecret(),
+      hf: !!effectiveSecret("hf_token", env.hfToken()),
+      alertWebhook: !!effectiveSecret("alert_webhook_url", ""),
     },
     drive: { connected: driveConfigured(), folderId: driveFolderId() },
     ops: {
@@ -32,6 +34,9 @@ export const GET = withAuth(async () => {
       pagespeedDailyQuota: getSetting("pagespeedDailyQuota", defaults.pagespeedDailyQuota),
       pagespeedQuotaRemaining: pagespeedQuotaRemaining(),
       cityPopulationFloor: getSetting("cityPopulationFloor", defaults.cityPopulationFloor),
+      jobConcurrency: getSetting("jobConcurrency", defaults.jobConcurrency),
+      fetchGlobal: getSetting("fetchGlobal", defaults.fetchGlobal),
+      fetchPerDomain: getSetting("fetchPerDomain", defaults.fetchPerDomain),
       lastBackupAt: getSetting<string | null>("lastBackupAt", null),
       lastBackupFile: getSetting<string | null>("lastBackupFile", null),
     },
@@ -51,8 +56,11 @@ export const POST = withAuth(async (req, identity) => {
     monthlySpendCeilingUSD?: number;
     pagespeedDailyQuota?: number;
     cityPopulationFloor?: number;
+    jobConcurrency?: number;
+    fetchGlobal?: number;
+    fetchPerDomain?: number;
     driveFolderId?: string;
-    keys?: Partial<Record<"pagespeed" | "anthropic" | "outscraper" | "googleClientId" | "googleClientSecret", string>>;
+    keys?: Partial<Record<"pagespeed" | "anthropic" | "outscraper" | "googleClientId" | "googleClientSecret" | "hf" | "alertWebhook", string>>;
   };
   const changed: string[] = [];
   if (typeof body.monthlySpendCeilingUSD === "number" && body.monthlySpendCeilingUSD >= 0) {
@@ -67,6 +75,19 @@ export const POST = withAuth(async (req, identity) => {
     setSetting("cityPopulationFloor", body.cityPopulationFloor);
     changed.push("cityPopulationFloor");
   }
+  // §3.7 concurrency limits — singletons read these at boot, so a restart applies them
+  if (typeof body.jobConcurrency === "number" && body.jobConcurrency >= 1 && body.jobConcurrency <= 8) {
+    setSetting("jobConcurrency", Math.round(body.jobConcurrency));
+    changed.push("jobConcurrency");
+  }
+  if (typeof body.fetchGlobal === "number" && body.fetchGlobal >= 1 && body.fetchGlobal <= 32) {
+    setSetting("fetchGlobal", Math.round(body.fetchGlobal));
+    changed.push("fetchGlobal");
+  }
+  if (typeof body.fetchPerDomain === "number" && body.fetchPerDomain >= 1 && body.fetchPerDomain <= 4) {
+    setSetting("fetchPerDomain", Math.round(body.fetchPerDomain));
+    changed.push("fetchPerDomain");
+  }
   if (typeof body.driveFolderId === "string") {
     secureSet("google_drive_folder_id", body.driveFolderId.trim());
     changed.push("driveFolderId");
@@ -77,6 +98,8 @@ export const POST = withAuth(async (req, identity) => {
     outscraper: "outscraper_api_key",
     googleClientId: "google_client_id",
     googleClientSecret: "google_client_secret",
+    hf: "hf_token",
+    alertWebhook: "alert_webhook_url",
   };
   for (const [k, storeName] of Object.entries(keyStoreNames)) {
     const v = body.keys?.[k as keyof typeof body.keys];

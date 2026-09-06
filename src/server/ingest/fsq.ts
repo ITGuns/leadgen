@@ -10,15 +10,25 @@ import { activateRelease, ensureReleaseRow } from "./releases";
 
 /**
  * FSQ OS Places extract — v1 uses it ONLY as phone/website gap-fill on matched
- * Overture records (§4.0), so the extract is a flat slice per state. Column names
- * target the published fsq-os-places parquet; verify on release bump (BLOCKERS B6).
+ * Overture records (§4.0), so the extract is a flat slice per state.
+ *
+ * Access (probed live 2026-09-06, superseding the procurement guide's "anonymous"):
+ * the old public S3 bucket now serves only LICENSE/NOTICE; distribution is the gated
+ * HF dataset `foursquare/fsq-os-places` (free account, gated=auto → instant approval,
+ * needs HF_TOKEN). Canonical path per its README:
+ *   hf://datasets/foursquare/fsq-os-places/release/dt=<RELEASE>/places/parquet/*.parquet
+ * Column names below are verified against Foursquare's Places OS schema docs.
  */
+
+const HF_DATASET_BASE = "hf://datasets/foursquare/fsq-os-places/release";
 
 export function fsqSourcePath(): string {
   if (env.mockMode) return path.join(process.cwd(), "fixtures", "mock", "places_fsq.parquet");
   const base = env.fsqBaseUrl();
-  if (!base) throw new Error("FSQ_BASE_URL is not set (BLOCKERS B6)");
-  return base.endsWith(".parquet") ? base : `${base.replace(/\/$/, "")}/*.parquet`;
+  if (base) return base.endsWith(".parquet") ? base : `${base.replace(/\/$/, "")}/*.parquet`;
+  const release = env.fsqRelease();
+  if (!release) throw new Error("set FSQ_RELEASE (e.g. 2026-08-11) or FSQ_BASE_URL, plus HF_TOKEN (BLOCKERS B6)");
+  return `${HF_DATASET_BASE}/dt=${release}/places/parquet/*.parquet`;
 }
 export function fsqReleaseId(): string {
   return env.mockMode ? "mock-2026-09" : env.fsqRelease() || "unpinned";

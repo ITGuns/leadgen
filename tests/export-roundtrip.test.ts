@@ -10,6 +10,8 @@ import { Worker, enqueueJob } from "@/server/jobs/worker";
 import { createCampaign, defaultFilters, startCampaign } from "@/server/campaigns";
 import { createExport } from "@/server/exports/run";
 import { DEFAULT_COLUMNS } from "@/server/exports/columns";
+import { env } from "@/server/config";
+import path from "node:path";
 
 /** G7 — DB → XLSX → parse → identical rows; DNC never present. */
 
@@ -166,4 +168,24 @@ describe("G7 · export round-trip", () => {
     const override = getDb().select().from(auditLog).all().find((a) => a.action === "export.include_excluded_override");
     expect(override).toBeTruthy();
   }, 300_000);
+});
+
+describe("G7 · Drive push with per-campaign subfolder (mock, §3.5)", () => {
+  it("creates the subfolder under drive-mock and links the uploaded file", async () => {
+    // reuses the campaign from the suite above via a fresh export
+    const record = createExport(
+      { campaignId: 1, columns: DEFAULT_COLUMNS, includeExcluded: false, toDrive: true, driveSubfolder: "Roofers TX" },
+      "xlsx",
+      "t@gemfieldconsulting.com",
+    );
+    const w = new Worker(1, 10);
+    await w.drain(120_000);
+    const done = getDb().select().from(exportsTable).where(eq(exportsTable.id, record.id)).get()!;
+    expect(done.status).toBe("completed");
+    expect(done.driveLink).toBeTruthy();
+    expect(done.driveLink).toContain(path.join("drive-mock", "Roofers TX"));
+    const localCopy = done.driveLink!.replace("file://", "");
+    expect(fs.existsSync(localCopy)).toBe(true);
+    expect(localCopy.startsWith(path.join(env.exportsDir(), "drive-mock", "Roofers TX"))).toBe(true);
+  }, 200_000);
 });

@@ -33,7 +33,7 @@ score (0–100), scoreReasons `[{chip,points,detail?}]`, websiteCheck json (C6),
 `campaigns` — niche, confirmedTaxonomy string[], states string[], cityList? (city names match `city`, 5-digit entries match `postal`, OR-combined; ZIP entries are ignored by the city-keyed paid fan-out), filters `{hasWebsite:any|yes|no, minConfidence(0.6), hasPhone, operatingOnly, sources, excludeChains, includeContactless:false}`, caps `{maxRecords, budgetCapUSD}`, smoke bool, aiOwnerExtraction bool, topUp `{enabled:false, provider, capUSD}`, status `draft·running·paused·completed·canceled·failed`, releaseOverture/releaseFsq (recorded at plan time — reproducibility), estimate json, spendUSD, stageCounts json, createdBy, per-stage error counts.
 `campaign_leads` — (campaignId, leadId) unique; how a lead accrues campaign history.
 
-Support tables: `places_overture`, `places_fsq`, `releases`, `jobs` (incl. `runAfter` for backoff/cron), `intents`, `suppressions` (kind `client·dnc`, phone/domain normalized), `audit_log`, `taxonomy_mappings` (niche→set, confirmedBy/At, timesUsed), `pagespeed_cache` (domain pk, 30-day TTL), `quota_usage` (provider+day), `spend_ledger`, `notes`, `exports` (params, status, path, rowCount, driveLink), `app_settings` (runtime-tunable ops knobs; never secrets), `chains`.
+Support tables: `places_overture`, `places_fsq`, `releases` (gateReport also carries the §4.0 diff summary `{new, changedWebsites, changedPhones, disappeared}` written by conflation), `jobs` (incl. `runAfter` for backoff/cron), `intents`, `suppressions` (kind `client·dnc`, phone/domain normalized), `audit_log`, `taxonomy_mappings` (niche→set, confirmedBy/At, timesUsed), `pagespeed_cache` (domain pk, 30-day TTL), `quota_usage` (provider+day), `spend_ledger`, `notes`, `exports` (params, status, path, rowCount, driveLink), `app_settings` (runtime-tunable ops knobs; never secrets), `chains`.
 
 ## C2. Normalization (deterministic, property-tested)
 
@@ -83,7 +83,7 @@ Fetcher rules: ≤2 concurrent per domain, ≤10 global, 8 s timeout, honors rob
 | score | rubric engine (C8); chips persisted | lead id batches |
 | ready | final counts, campaign completed | — |
 
-Every stage: batch loop → checkpoint job progress → honor pause/cancel between batches. Per-stage error counters with per-lead retry action. A crashed run resumes at its checkpoint without re-billing (intents).
+Every stage: batch loop → checkpoint job progress → honor pause/cancel between batches. Per-stage error counters with retry: `retry_errors` (completed/failed campaigns) clears the stage failure markers — website-check `error:'other'` (dead/timeout are classifications, not errors) and PageSpeed `-1` — resets the counters and re-enqueues; the idempotent stages redo exactly the cleared work. A crashed run resumes at its checkpoint without re-billing (intents).
 
 ## C8. Score rubric format (`config/score-rubric.json`)
 
@@ -127,7 +127,8 @@ interface AIProvider {
 }
 interface PageSpeedProvider { runMobile(url: string): Promise<{ mobileScore: number; lcpMs: number }>; }
 interface DrivePort { upload(localPath: string, name: string, folderId: string, mime: string):
-                        Promise<{ id: string; webViewLink: string }>; }
+                        Promise<{ id: string; webViewLink: string }>;
+                      ensureFolder(name: string, parentId: string): Promise<{ id: string }>; } // §3.5 subfolders
 interface Fetcher { get(url: string, opts?): Promise<FetchResult>; }  // polite wrapper (C6 rules)
 ```
 `OwnerExtraction = { ownerName?: string; role?: string; evidenceSnippet: string; confidence: 'high'|'low' }` — schema rejects a name without a snippet. Selection: `MOCK_MODE=1` or missing key ⇒ mock twin; mocks are deterministic (seeded by input hash) and never touch the network.

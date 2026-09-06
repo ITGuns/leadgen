@@ -60,6 +60,8 @@ export interface PageSpeedProvider {
 export interface DrivePort {
   readonly name: string;
   upload(localPath: string, name: string, folderId: string, mime: string): Promise<{ id: string; webViewLink: string }>;
+  /** Find-or-create a subfolder under `parentId` (§3.5 optional per-campaign subfolder). */
+  ensureFolder(name: string, parentId: string): Promise<{ id: string }>;
 }
 
 export type FetchResult = {

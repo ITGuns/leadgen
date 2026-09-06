@@ -23,7 +23,7 @@ npx tsc --noEmit  # typecheck
 
 Everything to sign up for is in [docs/LEADFORGE_API_PROCUREMENT_GUIDE.md](docs/LEADFORGE_API_PROCUREMENT_GUIDE.md); the live checklist of what's still parked is [BLOCKERS.md](BLOCKERS.md). Short version:
 
-1. Copy `.env.example` → `.env`; set `MOCK_MODE=0`, `APP_SECRET`, and `OVERTURE_RELEASE` (2026-08-19.0 was latest at build time — verified live).
+1. Copy `.env.example` → `.env`; set `MOCK_MODE=0`, `APP_SECRET`, `OVERTURE_RELEASE` (2026-08-19.0 — verified live) and `FSQ_RELEASE` (2026-08-11) + `HF_TOKEN` (FSQ moved to a gated HF dataset; free account, auto-approved — BLOCKERS B6).
 2. Google Cloud: PageSpeed API key + OAuth client (Drive) → enter in Settings (stored encrypted on the volume). Connect Drive once (user OAuth / Shared Drive — never a bare service account).
 3. Cloudflare Zero Trust: tunnel + Access app on `leads.gemfieldconsulting.com` → `CF_TUNNEL_TOKEN`, `CF_ACCESS_TEAM_DOMAIN`, `CF_ACCESS_AUD`. The app 401s every request without a valid Access JWT.
 4. Host with ≥4 GB RAM: `docker compose up -d --build`. The `/data` volume (DB, exports, backups, encrypted config) survives redeploys. No inbound ports — the tunnel dials out.

@@ -10,14 +10,16 @@ type SettingsResp = {
   drive: { connected: boolean; folderId: string };
   ops: {
     monthlySpendCeilingUSD: number; monthSpendUSD: number; pagespeedDailyQuota: number;
-    pagespeedQuotaRemaining: number; cityPopulationFloor: number; lastBackupAt: string | null; lastBackupFile: string | null;
+    pagespeedQuotaRemaining: number; cityPopulationFloor: number; jobConcurrency: number;
+    fetchGlobal: number; fetchPerDomain: number; lastBackupAt: string | null; lastBackupFile: string | null;
   };
   env: { overtureRelease: string; fsqRelease: string; appUrl: string; cfAccessConfigured: boolean };
   compliance: { userAgent: string; dncProcess: string; canSpamChecklist: string[]; dataHygiene: string };
   attribution: string;
 };
+type ReleaseDiff = { new: number; changedWebsites: number; changedPhones: number; disappeared: number };
 type IngestResp = {
-  releases: { id: number; source: string; releaseId: string; status: string; rowCounts: Record<string, number> | null; finishedAt: string | null; error: string | null }[];
+  releases: { id: number; source: string; releaseId: string; status: string; rowCounts: Record<string, number> | null; finishedAt: string | null; error: string | null; gateReport?: { diff?: ReleaseDiff } | null }[];
   recentJobs: { id: number; type: string; status: string; lastError: string | null; createdAt: string }[];
 };
 type Mapping = { niche: string; taxonomySet: string[]; confirmedBy: string; confirmedAt: string; timesUsed: number };
@@ -28,6 +30,8 @@ const KEY_FIELDS: { k: string; label: string; blocker: string }[] = [
   { k: "outscraper", label: "Outscraper API key (optional)", blocker: "B8" },
   { k: "googleClientId", label: "Google OAuth client ID", blocker: "B2" },
   { k: "googleClientSecret", label: "Google OAuth client secret", blocker: "B2" },
+  { k: "hf", label: "Hugging Face token (FSQ gap-fill)", blocker: "B6" },
+  { k: "alertWebhook", label: "Ops alert webhook URL (Slack-compatible, optional)", blocker: "ops" },
 ];
 
 function SettingsInner() {
@@ -134,7 +138,14 @@ function SettingsInner() {
               <tr key={r.id} className="border-b border-zinc-900">
                 <td className="td">{r.source}</td><td className="td">{r.releaseId}</td>
                 <td className="td">{r.status}{r.error && <span className="ml-1 text-xs text-red-400">{r.error}</span>}</td>
-                <td className="td text-zinc-400">{r.rowCounts ? Object.entries(r.rowCounts).map(([s, n]) => `${s}:${n}`).join(" ") : "—"}</td>
+                <td className="td text-zinc-400">
+                  {r.rowCounts ? Object.entries(r.rowCounts).map(([s, n]) => `${s}:${n}`).join(" ") : "—"}
+                  {r.gateReport?.diff && (
+                    <div className="text-[11px] text-zinc-500">
+                      diff: +{r.gateReport.diff.new} new · {r.gateReport.diff.changedWebsites} site Δ · {r.gateReport.diff.changedPhones} phone Δ · {r.gateReport.diff.disappeared} disappeared
+                    </div>
+                  )}
+                </td>
                 <td className="td text-zinc-500">{fmtDate(r.finishedAt)}</td>
               </tr>
             ))}
@@ -153,7 +164,14 @@ function SettingsInner() {
             <button className="btn py-1 text-xs" onClick={() => save({ cityPopulationFloor: Number(floorDraft) }, "Floor saved.")}>Set</button></label>
           <div>Last backup: <b>{data.ops.lastBackupAt ? fmtDate(data.ops.lastBackupAt) : "never"}</b> <button className="btn ml-2 py-1 text-xs" onClick={runBackupNow}>Backup now</button></div>
           <div>Access JWT gate: {data.mockMode ? <span className="text-sky-300">dev identity (mock)</span> : data.env.cfAccessConfigured ? <span className="text-emerald-400">configured</span> : <span className="text-red-400">NOT configured (B3)</span>}</div>
+          <label className="flex items-center gap-2">Job concurrency <input className="input w-16" defaultValue={data.ops.jobConcurrency}
+            onBlur={(e) => save({ jobConcurrency: Number(e.target.value) }, "Saved — applies after restart.")} /></label>
+          <label className="flex items-center gap-2">Fetch: global <input className="input w-16" defaultValue={data.ops.fetchGlobal}
+            onBlur={(e) => save({ fetchGlobal: Number(e.target.value) }, "Saved — applies after restart.")} /></label>
+          <label className="flex items-center gap-2">Fetch: per-domain <input className="input w-16" defaultValue={data.ops.fetchPerDomain}
+            onBlur={(e) => save({ fetchPerDomain: Number(e.target.value) }, "Saved — applies after restart.")} /></label>
         </div>
+        <p className="text-[11px] text-zinc-500">Concurrency limits apply at the next restart (they are read when the worker/fetcher singletons boot). Politeness floors stay hard-coded: 8s timeout, robots.txt, identified UA.</p>
       </section>
 
       <section className="card space-y-2">

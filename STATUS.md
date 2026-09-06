@@ -6,6 +6,9 @@
 Machine definition-of-done: gates G1–G8 green (204 tests) · mock-mode Playwright E2E 5/5 · keyless CI · `next build` clean · live-bucket probe verified the real Overture release schema (2026-08-19.0).
 Remaining = human/procurement items only: see BLOCKERS.md and the #Z checklist in HANDOFF.md.
 
+## Session 3 · 2026-09-06 — spec closure
+FSQ access probed live and pinned (B6: gated HF dataset, `dt=2026-08-11`, schema verified — the guide's "anonymous" is outdated; needs free-account HF_TOKEN). Closed the remaining partials: §3.5 Drive per-campaign subfolders · §3.2 retry-errors · §3.7 Settings concurrency limits · §4.0 release diff summary (new/changed/disappeared on the release row) · §3.1 ZIP entries in city lists · ops alert webhook (beyond-guide, user-approved). 215 tests + E2E 5/5 green. Still open by choice: D16 bbox-only fallback, GAPSWEEP pre-files P1–P5 (won't backfill), clean-VM compose-up (host step).
+
 ## Three likeliest breakpoints (kickoff step 1)
 
 1. **Overture taxonomy mapping quality** — niche→taxonomy sets that over/under-match (e.g. "roofers" pulling `roofing_supply_store`). Mitigations: curated `data/niche_mappings.json`, mandatory human confirmation chips before first run of a niche, G2 golden set of 30 phrases, mappings persisted + reusable.
