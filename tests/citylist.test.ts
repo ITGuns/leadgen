@@ -11,7 +11,7 @@ import { fanOutCities } from "@/server/pipeline/fanout";
 
 function input(cityList: string[] | null): CampaignInput {
   return {
-    name: "geo precision", niche: "plumbers", confirmedTaxonomy: ["plumber", "electrician", "hvac_service"],
+    name: "geo precision", niche: "plumbers", confirmedTaxonomy: ["plumbing", "electrician", "hvac_service"],
     states: ["TX"], cityList, filters: { ...defaultFilters(), excludeChains: false },
     caps: { maxRecords: 5000, budgetCapUSD: 0 }, smoke: false, aiOwnerExtraction: false, topUp: null,
   };

@@ -67,31 +67,32 @@ const STATES: Record<string, { n: number; areas: string[]; cities: { c: string; 
   },
 };
 
+// REAL Overture taxonomy codes (derived from release 2026-08-19.0 — see data/.taxonomy-derivation.json)
 const TAXONOMIES = [
-  "roofing_contractor", "roofing_service", "hvac_service", "air_conditioning_contractor", "heating_contractor",
-  "plumber", "septic_system_service", "electrician", "landscaping_service", "lawn_care_service", "tree_service",
-  "pest_control_service", "pressure_washing_service", "house_cleaning_service", "carpet_cleaning_service",
-  "junk_removal_service", "moving_company", "locksmith", "garage_door_service", "fence_contractor",
-  "concrete_contractor", "foundation_repair_service", "painting_contractor", "flooring_contractor",
-  "general_contractor", "home_remodeling_service", "handyman_service", "gutter_service", "pool_service",
-  "auto_repair_shop", "towing_service", "car_detailing_service", "dentist", "chiropractor", "veterinarian",
-  "barber_shop", "hair_salon", "restaurant", "personal_injury_lawyer", "accountant",
+  "roofing", "ceiling_and_roofing_repair_and_service", "hvac_service", "water_heater_installation_repair",
+  "plumbing", "septic_service", "electrician", "landscaping", "lawn_service", "tree_service",
+  "pest_control_service", "pressure_washing", "cleaning_service", "carpet_cleaning",
+  "junk_removal_and_hauling", "mover", "key_and_locksmith", "garage_door_service", "fence_and_gate_sales_service",
+  "masonry_concrete", "foundation_repair", "painting", "flooring_contractor",
+  "contractor", "altering_and_remodeling_contractor", "handyman", "gutter_service", "pool_and_hot_tub_service",
+  "automotive_repair", "towing_service", "auto_detailing", "general_dentistry", "chiropractic", "veterinarian",
+  "barber", "hair_salon", "restaurant", "personal_injury_law", "accountant", "attorney_or_law_firm",
 ];
 const SERVICE_WORD: Record<string, string> = {
-  roofing_contractor: "Roofing", roofing_service: "Roofing", hvac_service: "Air & Heat",
-  air_conditioning_contractor: "AC", heating_contractor: "Heating", plumber: "Plumbing",
-  septic_system_service: "Septic", electrician: "Electric", landscaping_service: "Landscaping",
-  lawn_care_service: "Lawn Care", tree_service: "Tree Service", pest_control_service: "Pest Control",
-  pressure_washing_service: "Pressure Washing", house_cleaning_service: "Cleaning",
-  carpet_cleaning_service: "Carpet Care", junk_removal_service: "Junk Removal", moving_company: "Movers",
-  locksmith: "Locksmith", garage_door_service: "Garage Doors", fence_contractor: "Fencing",
-  concrete_contractor: "Concrete", foundation_repair_service: "Foundation Repair",
-  painting_contractor: "Painting", flooring_contractor: "Flooring", general_contractor: "Construction",
-  home_remodeling_service: "Remodeling", handyman_service: "Handyman", gutter_service: "Gutters",
-  pool_service: "Pools", auto_repair_shop: "Auto Repair", towing_service: "Towing",
-  car_detailing_service: "Detailing", dentist: "Dental", chiropractor: "Chiropractic",
-  veterinarian: "Veterinary", barber_shop: "Barbers", hair_salon: "Salon", restaurant: "Kitchen",
-  personal_injury_lawyer: "Law", accountant: "Accounting",
+  roofing: "Roofing", ceiling_and_roofing_repair_and_service: "Roof Repair", hvac_service: "Air & Heat",
+  water_heater_installation_repair: "Water Heaters", plumbing: "Plumbing",
+  septic_service: "Septic", electrician: "Electric", landscaping: "Landscaping",
+  lawn_service: "Lawn Care", tree_service: "Tree Service", pest_control_service: "Pest Control",
+  pressure_washing: "Pressure Washing", cleaning_service: "Cleaning",
+  carpet_cleaning: "Carpet Care", junk_removal_and_hauling: "Junk Removal", mover: "Movers",
+  key_and_locksmith: "Locksmith", garage_door_service: "Garage Doors", fence_and_gate_sales_service: "Fencing",
+  masonry_concrete: "Concrete", foundation_repair: "Foundation Repair",
+  painting: "Painting", flooring_contractor: "Flooring", contractor: "Construction",
+  altering_and_remodeling_contractor: "Remodeling", handyman: "Handyman", gutter_service: "Gutters",
+  pool_and_hot_tub_service: "Pools", automotive_repair: "Auto Repair", towing_service: "Towing",
+  auto_detailing: "Detailing", general_dentistry: "Dental", chiropractic: "Chiropractic",
+  veterinarian: "Veterinary", barber: "Barbers", hair_salon: "Salon", restaurant: "Kitchen",
+  personal_injury_law: "Law", accountant: "Accounting", attorney_or_law_firm: "Legal",
 };
 const FIRST = ["Jim", "Maria", "Dale", "Rosa", "Hank", "Tina", "Carlos", "Peggy", "Walt", "June", "Ray", "Dot", "Gus", "Lena", "Bud", "Ida"];
 const LAST = ["Baker", "Nguyen", "Ortiz", "Miller", "Hayes", "Kowalski", "Trujillo", "Bennett", "Ferris", "Delgado", "Yoder", "Pruett", "Marsh", "Okafor"];
@@ -193,7 +194,7 @@ for (const state of ["TX", "FL", "GA"]) {
   overtureRows.push({
     id: gers(),
     names: { primary: "Roto Rooter Plumbing" },
-    taxonomy: { primary: "plumber", alternates: [] },
+    taxonomy: { primary: "plumbing", alternates: [] },
     confidence: 0.95,
     operating_status: "open",
     phones: [phoneFor(cfg.areas)],

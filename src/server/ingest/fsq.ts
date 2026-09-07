@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { placesFsq } from "@/db/schema";
 import { env, now } from "../config";
+import { effectiveSecret } from "../secure-store";
 import type { JobContext } from "../jobs/registry";
 import { JobStopped } from "../jobs/registry";
 import { queryJson, withDuck } from "./duck";
@@ -65,10 +66,30 @@ type FsqRow = {
   longitude: number | null;
 };
 
+/** FSQ is OPTIONAL gap-fill (§4.0): in real mode without access configured, the
+ * extract skips gracefully and the chain continues to conflation — a missing free
+ * HF token must never block the monthly ingest. */
+export function fsqConfigured(): boolean {
+  if (env.mockMode) return true;
+  if (env.fsqBaseUrl()) return true; // custom mirror needs no token
+  return !!(env.fsqRelease() && effectiveSecret("hf_token", env.hfToken()));
+}
+
 export async function runFsqExtract(ctx: JobContext): Promise<void> {
   const db = getDb();
   const payload = (ctx.job.payload ?? {}) as { states?: string[]; chain?: boolean };
   const states = payload.states ?? ["TX", "FL", "GA"];
+  if (!fsqConfigured()) {
+    ctx.checkpoint({
+      skipped: true,
+      reason: "FSQ gap-fill not configured (set FSQ_RELEASE + HF_TOKEN, or FSQ_BASE_URL — BLOCKERS B6); continuing without gap-fill",
+    });
+    if (payload.chain) {
+      const { enqueueJob } = await import("../jobs/worker");
+      enqueueJob("conflate", {}, { dedupe: true });
+    }
+    return;
+  }
   const releaseId = fsqReleaseId();
   const release = ensureReleaseRow("fsq", releaseId, states);
   const progress = (ctx.job.progress ?? {}) as { stateIndex?: number; rowCounts?: Record<string, number> };

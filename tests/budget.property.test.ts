@@ -12,7 +12,7 @@ function makeCampaign(budgetCapUSD: number): number {
     .values({
       name: "t",
       niche: "roofers",
-      confirmedTaxonomy: ["roofing_service"],
+      confirmedTaxonomy: ["roofing"],
       states: ["TX"],
       filters: {
         hasWebsite: "any",

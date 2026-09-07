@@ -1,0 +1,252 @@
+{
+ "release": "2026-08-19.0",
+ "states": [
+  "DE",
+  "NV",
+  "CT"
+ ],
+ "derivedAt": "2026-09-07T13:57:15.952Z",
+ "codes": 1792,
+ "topCodes": [
+  {
+   "code": "real_estate_agent",
+   "parent": "real_estate_service",
+   "count": 9506,
+   "states": 3
+  },
+  {
+   "code": "health_care",
+   "parent": "",
+   "count": 8693,
+   "states": 3
+  },
+  {
+   "code": "christian_place_of_worship",
+   "parent": "place_of_worship",
+   "count": 5335,
+   "states": 3
+  },
+  {
+   "code": "restaurant",
+   "parent": "food_and_drink",
+   "count": 4935,
+   "states": 3
+  },
+  {
+   "code": "social_or_community_service",
+   "parent": "community_and_government",
+   "count": 4671,
+   "states": 3
+  },
+  {
+   "code": "historic_site",
+   "parent": "cultural_and_historic",
+   "count": 4441,
+   "states": 3
+  },
+  {
+   "code": "automotive_repair",
+   "parent": "automotive_service",
+   "count": 4384,
+   "states": 3
+  },
+  {
+   "code": "beauty_salon",
+   "parent": "personal_or_beauty_service",
+   "count": 4278,
+   "states": 3
+  },
+  {
+   "code": "hair_salon",
+   "parent": "personal_or_beauty_service",
+   "count": 4076,
+   "states": 3
+  },
+  {
+   "code": "professional_service",
+   "parent": "services_and_business",
+   "count": 3869,
+   "states": 3
+  },
+  {
+   "code": "doctors_office",
+   "parent": "diagnostics_imaging_or_lab_service",
+   "count": 3683,
+   "states": 3
+  },
+  {
+   "code": "park",
+   "parent": "sports_and_recreation",
+   "count": 3398,
+   "states": 3
+  },
+  {
+   "code": "gas_station",
+   "parent": "fueling_station",
+   "count": 3154,
+   "states": 3
+  },
+  {
+   "code": "contractor",
+   "parent": "home_service",
+   "count": 3018,
+   "states": 3
+  },
+  {
+   "code": "pizza_restaurant",
+   "parent": "italian_restaurant",
+   "count": 2963,
+   "states": 3
+  },
+  {
+   "code": "atm",
+   "parent": "financial_service",
+   "count": 2885,
+   "states": 3
+  },
+  {
+   "code": "gym",
+   "parent": "sport_or_fitness_facility",
+   "count": 2875,
+   "states": 3
+  },
+  {
+   "code": "real_estate_service",
+   "parent": "services_and_business",
+   "count": 2799,
+   "states": 3
+  },
+  {
+   "code": "insurance_agency",
+   "parent": "financial_service",
+   "count": 2743,
+   "states": 3
+  },
+  {
+   "code": "government_office",
+   "parent": "community_and_government",
+   "count": 2597,
+   "states": 3
+  },
+  {
+   "code": "dental_clinic",
+   "parent": "outpatient_care_facility",
+   "count": 2451,
+   "states": 3
+  },
+  {
+   "code": "nail_salon",
+   "parent": "personal_or_beauty_service",
+   "count": 2443,
+   "states": 3
+  },
+  {
+   "code": "grocery_store",
+   "parent": "food_and_beverage_store",
+   "count": 2379,
+   "states": 3
+  },
+  {
+   "code": "convenience_store",
+   "parent": "shopping",
+   "count": 2243,
+   "states": 3
+  },
+  {
+   "code": "spa",
+   "parent": "wellness_service",
+   "count": 2242,
+   "states": 3
+  },
+  {
+   "code": "shopping",
+   "parent": "",
+   "count": 2133,
+   "states": 3
+  },
+  {
+   "code": "fast_food_restaurant",
+   "parent": "casual_eatery",
+   "count": 2129,
+   "states": 3
+  },
+  {
+   "code": "clothing_store",
+   "parent": "fashion_and_apparel_store",
+   "count": 2038,
+   "states": 3
+  },
+  {
+   "code": "auto_dealer",
+   "parent": "vehicle_dealer",
+   "count": 2001,
+   "states": 3
+  },
+  {
+   "code": "bank_or_credit_union",
+   "parent": "financial_service",
+   "count": 1997,
+   "states": 3
+  },
+  {
+   "code": "money_transfer_service",
+   "parent": "financial_service",
+   "count": 1980,
+   "states": 3
+  },
+  {
+   "code": "attorney_or_law_firm",
+   "parent": "legal_service",
+   "count": 1959,
+   "states": 3
+  },
+  {
+   "code": "mexican_restaurant",
+   "parent": "latin_american_restaurant",
+   "count": 1881,
+   "states": 3
+  },
+  {
+   "code": "massage_therapy",
+   "parent": "wellness_service",
+   "count": 1873,
+   "states": 3
+  },
+  {
+   "code": "coffee_shop",
+   "parent": "non_alcoholic_beverage_venue",
+   "count": 1871,
+   "states": 3
+  },
+  {
+   "code": "financial_service",
+   "parent": "services_and_business",
+   "count": 1850,
+   "states": 3
+  },
+  {
+   "code": "barber",
+   "parent": "personal_or_beauty_service",
+   "count": 1815,
+   "states": 3
+  },
+  {
+   "code": "farm",
+   "parent": "agricultural_service",
+   "count": 1787,
+   "states": 3
+  },
+  {
+   "code": "hotel",
+   "parent": "lodging",
+   "count": 1758,
+   "states": 3
+  },
+  {
+   "code": "chiropractic",
+   "parent": "complementary_and_alternative_medicine",
+   "count": 1714,
+   "states": 3
+  }
+ ]
+}

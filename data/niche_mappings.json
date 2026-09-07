@@ -1,132 +1,434 @@
 {
-  "_comment": "Curated niche → Overture taxonomy sets (DECISIONS D10). First lookup after confirmed taxonomy_mappings; keys are normalized phrases. Human still confirms in the campaign builder.",
-  "roofers": ["roofing_contractor", "roofing_service"],
-  "roofing": ["roofing_contractor", "roofing_service"],
-  "roof repair": ["roofing_contractor", "roofing_service"],
-  "hvac": ["hvac_service", "air_conditioning_contractor", "heating_contractor"],
-  "ac repair": ["air_conditioning_contractor", "hvac_service"],
-  "air conditioning": ["air_conditioning_contractor", "hvac_service"],
-  "heating and cooling": ["hvac_service", "heating_contractor", "air_conditioning_contractor"],
-  "plumbers": ["plumber", "water_heater_installation_service"],
-  "plumbing": ["plumber", "water_heater_installation_service"],
-  "septic pumping": ["septic_system_service"],
-  "septic": ["septic_system_service"],
-  "well drilling": ["well_drilling_service"],
-  "electricians": ["electrician"],
-  "electrical contractors": ["electrician"],
-  "solar installers": ["solar_energy_contractor"],
-  "landscapers": ["landscaping_service", "lawn_care_service"],
-  "landscaping": ["landscaping_service", "lawn_care_service"],
-  "lawn care": ["lawn_care_service", "landscaping_service"],
-  "tree service": ["tree_service"],
-  "tree removal": ["tree_service"],
-  "irrigation": ["irrigation_service"],
-  "pool cleaning": ["pool_service"],
-  "pool builders": ["pool_contractor"],
-  "pest control": ["pest_control_service"],
-  "exterminators": ["pest_control_service"],
-  "wildlife removal": ["wildlife_control_service"],
-  "pressure washing": ["pressure_washing_service"],
-  "window cleaning": ["window_cleaning_service"],
-  "gutter cleaning": ["gutter_cleaning_service"],
-  "gutters": ["gutter_service", "gutter_cleaning_service"],
-  "chimney sweeps": ["chimney_sweep"],
-  "house cleaning": ["house_cleaning_service", "janitorial_service"],
-  "maid service": ["house_cleaning_service"],
-  "carpet cleaning": ["carpet_cleaning_service"],
-  "junk removal": ["junk_removal_service"],
-  "dumpster rental": ["dumpster_rental_service"],
-  "movers": ["moving_company"],
-  "moving companies": ["moving_company"],
-  "locksmiths": ["locksmith"],
-  "garage door repair": ["garage_door_service"],
-  "fencing contractors": ["fence_contractor"],
-  "fence companies": ["fence_contractor"],
-  "deck builders": ["deck_builder"],
-  "concrete contractors": ["concrete_contractor"],
-  "masonry": ["masonry_contractor"],
-  "paving": ["paving_contractor"],
-  "foundation repair": ["foundation_repair_service"],
-  "waterproofing": ["waterproofing_service"],
-  "insulation": ["insulation_contractor"],
-  "drywall": ["drywall_contractor"],
-  "painters": ["painting_contractor"],
-  "painting contractors": ["painting_contractor"],
-  "flooring": ["flooring_contractor", "carpet_installation_service", "tile_contractor"],
-  "tile installers": ["tile_contractor"],
-  "countertops": ["countertop_installation_service"],
-  "cabinet makers": ["cabinet_maker"],
-  "general contractors": ["general_contractor"],
-  "remodelers": ["home_remodeling_service", "kitchen_remodeling_service", "bathroom_remodeling_service"],
-  "kitchen remodeling": ["kitchen_remodeling_service", "home_remodeling_service"],
-  "bathroom remodeling": ["bathroom_remodeling_service", "home_remodeling_service"],
-  "handyman": ["handyman_service"],
-  "handyman services": ["handyman_service"],
-  "window installers": ["window_installation_service"],
-  "siding": ["siding_contractor"],
-  "appliance repair": ["appliance_repair_service"],
-  "computer repair": ["computer_repair_service"],
-  "security systems": ["security_system_installer"],
-  "accountants": ["accountant", "bookkeeping_service", "tax_preparation_service"],
-  "bookkeepers": ["bookkeeping_service", "accountant"],
-  "tax preparers": ["tax_preparation_service", "accountant"],
-  "insurance agents": ["insurance_agency"],
-  "real estate agents": ["real_estate_agency"],
-  "property managers": ["property_management_company"],
-  "pi lawyer": ["personal_injury_lawyer", "lawyer"],
-  "personal injury lawyer": ["personal_injury_lawyer", "lawyer"],
-  "family lawyer": ["family_law_attorney", "lawyer"],
-  "criminal defense": ["criminal_defense_lawyer", "lawyer"],
-  "estate planning": ["estate_planning_attorney", "lawyer"],
-  "immigration lawyer": ["immigration_attorney", "lawyer"],
-  "marketing agencies": ["marketing_agency"],
-  "photographers": ["photographer"],
-  "auto repair": ["auto_repair_shop", "transmission_repair_service"],
-  "mechanics": ["auto_repair_shop"],
-  "body shops": ["auto_body_shop"],
-  "tire shops": ["tire_shop"],
-  "oil change": ["oil_change_service"],
-  "car detailing": ["car_detailing_service"],
-  "car washes": ["car_wash"],
-  "towing": ["towing_service"],
-  "auto glass": ["auto_glass_service"],
-  "dentists": ["dentist"],
-  "orthodontists": ["orthodontist"],
-  "chiropractors": ["chiropractor"],
-  "physical therapists": ["physical_therapist"],
-  "optometrists": ["optometrist"],
-  "veterinarians": ["veterinarian"],
-  "vets": ["veterinarian"],
-  "med spas": ["med_spa"],
-  "massage therapists": ["massage_therapist"],
-  "therapists": ["counseling_service"],
-  "barbers": ["barber_shop"],
-  "barbershops": ["barber_shop"],
-  "hair salons": ["hair_salon"],
-  "nail salons": ["nail_salon"],
-  "tattoo shops": ["tattoo_studio"],
-  "restaurants": ["restaurant", "cafe"],
-  "cafes": ["cafe"],
-  "bakeries": ["bakery"],
-  "food trucks": ["food_truck"],
-  "caterers": ["catering_service"],
-  "bars": ["bar"],
-  "gyms": ["gym"],
-  "yoga studios": ["yoga_studio"],
-  "martial arts": ["martial_arts_school"],
-  "dance schools": ["dance_school"],
-  "pet groomers": ["pet_groomer"],
-  "pet boarding": ["pet_boarding_service"],
-  "dog trainers": ["dog_trainer"],
-  "daycares": ["day_care_center"],
-  "tutors": ["tutoring_service"],
-  "driving schools": ["driving_school"],
-  "florists": ["florist"],
-  "funeral homes": ["funeral_home"],
-  "event planners": ["event_planning_service"],
-  "wedding venues": ["wedding_venue"],
-  "sign shops": ["sign_shop"],
-  "print shops": ["printing_service"],
-  "laundromats": ["laundromat"],
-  "dry cleaners": ["dry_cleaner"]
+ "_comment": "Curated niche → Overture taxonomy sets, validated against data/overture_taxonomy.csv (derived from release data — see data/.taxonomy-derivation.json). Human still confirms in the campaign builder.",
+ "roofers": [
+  "roofing",
+  "ceiling_and_roofing_repair_and_service"
+ ],
+ "roofing": [
+  "roofing",
+  "ceiling_and_roofing_repair_and_service"
+ ],
+ "roof repair": [
+  "roofing",
+  "ceiling_and_roofing_repair_and_service"
+ ],
+ "hvac": [
+  "hvac_service"
+ ],
+ "ac repair": [
+  "hvac_service"
+ ],
+ "air conditioning": [
+  "hvac_service"
+ ],
+ "heating and cooling": [
+  "hvac_service"
+ ],
+ "plumbers": [
+  "plumbing",
+  "water_heater_installation_repair"
+ ],
+ "plumbing": [
+  "plumbing",
+  "water_heater_installation_repair"
+ ],
+ "septic pumping": [
+  "septic_service"
+ ],
+ "septic": [
+  "septic_service"
+ ],
+ "well drilling": [
+  "well_drilling"
+ ],
+ "electricians": [
+  "electrician"
+ ],
+ "electrical contractors": [
+  "electrician"
+ ],
+ "solar installers": [
+  "solar_installation"
+ ],
+ "landscapers": [
+  "landscaping",
+  "lawn_service"
+ ],
+ "landscaping": [
+  "landscaping",
+  "lawn_service"
+ ],
+ "lawn care": [
+  "lawn_service",
+  "landscaping"
+ ],
+ "tree service": [
+  "tree_service"
+ ],
+ "tree removal": [
+  "tree_service"
+ ],
+ "irrigation": [
+  "irrigation_service"
+ ],
+ "pool cleaning": [
+  "pool_cleaning",
+  "pool_and_hot_tub_service"
+ ],
+ "pool builders": [
+  "pool_and_hot_tub_service"
+ ],
+ "pest control": [
+  "pest_control_service"
+ ],
+ "exterminators": [
+  "pest_control_service"
+ ],
+ "wildlife removal": [
+  "wildlife_control"
+ ],
+ "pressure washing": [
+  "pressure_washing"
+ ],
+ "window cleaning": [
+  "window_washing"
+ ],
+ "gutter cleaning": [
+  "gutter_service"
+ ],
+ "gutters": [
+  "gutter_service"
+ ],
+ "chimney sweeps": [
+  "chimney_sweep",
+  "chimney_service"
+ ],
+ "house cleaning": [
+  "cleaning_service",
+  "home_cleaning"
+ ],
+ "maid service": [
+  "cleaning_service",
+  "home_cleaning"
+ ],
+ "carpet cleaning": [
+  "carpet_cleaning"
+ ],
+ "junk removal": [
+  "junk_removal_and_hauling"
+ ],
+ "dumpster rental": [
+  "dumpster_rental"
+ ],
+ "movers": [
+  "mover"
+ ],
+ "moving companies": [
+  "mover"
+ ],
+ "locksmiths": [
+  "key_and_locksmith"
+ ],
+ "garage door repair": [
+  "garage_door_service"
+ ],
+ "fencing contractors": [
+  "fence_and_gate_sales_service"
+ ],
+ "fence companies": [
+  "fence_and_gate_sales_service"
+ ],
+ "deck builders": [
+  "deck_and_railing_sales_service"
+ ],
+ "concrete contractors": [
+  "masonry_concrete",
+  "masonry_contractor"
+ ],
+ "masonry": [
+  "masonry_contractor",
+  "masonry_concrete"
+ ],
+ "paving": [
+  "paving_contractor"
+ ],
+ "foundation repair": [
+  "foundation_repair"
+ ],
+ "waterproofing": [
+  "waterproofing"
+ ],
+ "insulation": [
+  "insulation_installation"
+ ],
+ "drywall": [
+  "drywall_service"
+ ],
+ "painters": [
+  "painting"
+ ],
+ "painting contractors": [
+  "painting"
+ ],
+ "flooring": [
+  "flooring_contractor"
+ ],
+ "tile installers": [
+  "flooring_contractor",
+  "tile_store"
+ ],
+ "countertops": [
+  "countertop_installation"
+ ],
+ "cabinet makers": [
+  "cabinet_sales_service"
+ ],
+ "general contractors": [
+  "contractor",
+  "building_or_construction_service"
+ ],
+ "remodelers": [
+  "altering_and_remodeling_contractor",
+  "kitchen_remodeling",
+  "bathroom_remodeling"
+ ],
+ "kitchen remodeling": [
+  "kitchen_remodeling",
+  "altering_and_remodeling_contractor"
+ ],
+ "bathroom remodeling": [
+  "bathroom_remodeling",
+  "altering_and_remodeling_contractor"
+ ],
+ "handyman": [
+  "handyman"
+ ],
+ "handyman services": [
+  "handyman"
+ ],
+ "window installers": [
+  "windows_installation"
+ ],
+ "siding": [
+  "siding"
+ ],
+ "appliance repair": [
+  "appliance_repair_service"
+ ],
+ "computer repair": [
+  "it_service_and_computer_repair"
+ ],
+ "security systems": [
+  "security_systems",
+  "home_security"
+ ],
+ "accountants": [
+  "accountant",
+  "tax_service"
+ ],
+ "bookkeepers": [
+  "accountant"
+ ],
+ "tax preparers": [
+  "tax_service",
+  "accountant"
+ ],
+ "insurance agents": [
+  "insurance_agency"
+ ],
+ "real estate agents": [
+  "real_estate_agent"
+ ],
+ "property managers": [
+  "property_management"
+ ],
+ "pi lawyer": [
+  "personal_injury_law",
+  "attorney_or_law_firm"
+ ],
+ "personal injury lawyer": [
+  "personal_injury_law",
+  "attorney_or_law_firm"
+ ],
+ "family lawyer": [
+  "divorce_and_family_law",
+  "attorney_or_law_firm"
+ ],
+ "criminal defense": [
+  "criminal_defense_law",
+  "attorney_or_law_firm"
+ ],
+ "estate planning": [
+  "estate_planning_law",
+  "attorney_or_law_firm"
+ ],
+ "immigration lawyer": [
+  "immigration_law",
+  "attorney_or_law_firm"
+ ],
+ "marketing agencies": [
+  "marketing_agency",
+  "advertising_agency"
+ ],
+ "photographers": [
+  "photography_service",
+  "event_photography_service"
+ ],
+ "auto repair": [
+  "automotive_repair",
+  "transmission_repair"
+ ],
+ "mechanics": [
+  "automotive_repair"
+ ],
+ "body shops": [
+  "auto_body_shop"
+ ],
+ "tire shops": [
+  "tire_dealer_and_repair"
+ ],
+ "oil change": [
+  "oil_change_station"
+ ],
+ "car detailing": [
+  "auto_detailing"
+ ],
+ "car washes": [
+  "car_wash"
+ ],
+ "towing": [
+  "towing_service"
+ ],
+ "auto glass": [
+  "auto_glass_service"
+ ],
+ "dentists": [
+  "general_dentistry",
+  "dental_clinic"
+ ],
+ "orthodontists": [
+  "orthodontics"
+ ],
+ "chiropractors": [
+  "chiropractic"
+ ],
+ "physical therapists": [
+  "physical_therapy"
+ ],
+ "optometrists": [
+  "optometry"
+ ],
+ "veterinarians": [
+  "veterinarian"
+ ],
+ "vets": [
+  "veterinarian"
+ ],
+ "med spas": [
+  "medical_spa"
+ ],
+ "massage therapists": [
+  "massage_therapy"
+ ],
+ "barbers": [
+  "barber"
+ ],
+ "barbershops": [
+  "barber"
+ ],
+ "hair salons": [
+  "hair_salon",
+  "beauty_salon"
+ ],
+ "nail salons": [
+  "nail_salon"
+ ],
+ "tattoo shops": [
+  "tattoo_and_piercing"
+ ],
+ "restaurants": [
+  "restaurant"
+ ],
+ "cafes": [
+  "cafe",
+  "coffee_shop"
+ ],
+ "bakeries": [
+  "bakery"
+ ],
+ "food trucks": [
+  "food_truck_stand"
+ ],
+ "caterers": [
+  "caterer"
+ ],
+ "bars": [
+  "bar"
+ ],
+ "gyms": [
+  "gym"
+ ],
+ "yoga studios": [
+  "yoga_studio"
+ ],
+ "martial arts": [
+  "martial_arts_club"
+ ],
+ "dance schools": [
+  "dance_studio"
+ ],
+ "pet groomers": [
+  "pet_groomer"
+ ],
+ "pet boarding": [
+  "pet_boarding",
+  "animal_or_pet_service"
+ ],
+ "dog trainers": [
+  "dog_trainer",
+  "animal_or_pet_service"
+ ],
+ "daycares": [
+  "day_care_preschool",
+  "preschool"
+ ],
+ "tutors": [
+  "tutoring_service"
+ ],
+ "driving schools": [
+  "driving_school"
+ ],
+ "florists": [
+  "florist"
+ ],
+ "funeral homes": [
+  "funeral_service"
+ ],
+ "event planners": [
+  "party_and_event_planning",
+  "wedding_planning"
+ ],
+ "wedding venues": [
+  "wedding_chapel",
+  "event_venue"
+ ],
+ "sign shops": [
+  "printing_service"
+ ],
+ "print shops": [
+  "printing_service"
+ ],
+ "laundromats": [
+  "laundromat"
+ ],
+ "dry cleaners": [
+  "dry_cleaning"
+ ],
+ "auto repair shops": [
+  "automotive_repair",
+  "auto_body_shop"
+ ],
+ "auto shops": [
+  "automotive_repair"
+ ]
 }

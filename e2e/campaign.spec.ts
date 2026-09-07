@@ -23,7 +23,7 @@ test("build, confirm mapping, and smoke-run a roofers·TX campaign at $0", async
   await page.goto("/campaigns/new");
   await page.getByPlaceholder('Niche, e.g. "roofers"').fill("roofers");
   await page.getByRole("button", { name: "Propose categories" }).click();
-  await expect(page.locator(".chip", { hasText: "Roofing Contractor" })).toBeVisible();
+  await expect(page.locator(".chip", { hasText: "Roofing" }).first()).toBeVisible();
   await page.getByRole("button", { name: "Confirm mapping" }).click();
   await expect(page.getByText("✓ confirmed")).toBeVisible();
 

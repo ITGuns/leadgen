@@ -23,7 +23,7 @@ describe("campaign retry-errors", () => {
     await w.drain(120_000);
     const c = createCampaign(
       {
-        name: "retry test", niche: "roofers", confirmedTaxonomy: ["roofing_contractor", "roofing_service"],
+        name: "retry test", niche: "roofers", confirmedTaxonomy: ["roofing", "ceiling_and_roofing_repair_and_service"],
         states: ["TX"], filters: defaultFilters(), caps: { maxRecords: 5000, budgetCapUSD: 0 },
         smoke: true, aiOwnerExtraction: false, topUp: null,
       },

@@ -7,7 +7,7 @@
 - **Suppressions** → import the client roster (kind=client) FIRST (B12) — that's what structurally prevents cold-calling existing customers. DNC scrub results go in kind=dnc.
 
 ## Monthly
-1. Check the Overture releases page; bump `OVERTURE_RELEASE` in `.env` (and the taxonomy file if the release notes mention taxonomy changes). FSQ: bump `FSQ_RELEASE` (monthly `dt=` releases on the HF dataset; needs the free-account `HF_TOKEN` — B6). Each release row in Settings shows the diff vs the previous data: new / changed sites / changed phones / disappeared.
+1. Check the Overture releases page; bump `OVERTURE_RELEASE` in `.env`, then re-derive the category catalog from the new release: `npx tsx scripts/derive-taxonomy.ts DE NV CT` (~40s; the canonical CSV no longer exists upstream — D18). FSQ: bump `FSQ_RELEASE` (monthly `dt=` releases on the HF dataset; needs the free-account `HF_TOKEN` — B6). Each release row in Settings shows the diff vs the previous data: new / changed sites / changed phones / disappeared.
 2. Settings → Data → **Run monthly extract** (needs ≥4 GB RAM; office-machine alternative: `npx tsx scripts/workstation-extract.ts TX FL …` then ship the DB per the script header).
 3. The **ingest gate** must pass (row-count band ±40% per state, taxonomy resolution ≤2% unresolved, GERS on every row) or the previous release stays active — the failure report is on the release row in Settings.
 4. Weekly freshness runs itself (Sun 04:00): re-checks active leads' sites at $0, tags `site-launched` / `site-died` / `not-in-latest-release`, rescores.

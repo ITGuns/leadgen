@@ -16,7 +16,7 @@ function campaignInput(over: Partial<CampaignInput> = {}): CampaignInput {
   return {
     name: "Roofers TX smoke",
     niche: "roofers",
-    confirmedTaxonomy: ["roofing_contractor", "roofing_service"],
+    confirmedTaxonomy: ["roofing", "ceiling_and_roofing_repair_and_service"],
     states: ["TX"],
     filters: defaultFilters(),
     caps: { maxRecords: 5000, budgetCapUSD: 0 },
@@ -40,7 +40,7 @@ describe("campaign pipeline over mock data", () => {
     const victim = getDb()
       .select()
       .from(businesses)
-      .where(and(eq(businesses.taxonomyPrimary, "roofing_contractor"), sql`phone IS NOT NULL`))
+      .where(and(eq(businesses.taxonomyPrimary, "roofing"), sql`phone IS NOT NULL`))
       .get();
     if (victim?.phone) {
       getDb()
@@ -79,7 +79,7 @@ describe("campaign pipeline over mock data", () => {
       .all();
     expect(rows.length).toBeGreaterThan(20);
     for (const { business } of rows) {
-      const set = new Set(["roofing_contractor", "roofing_service"]);
+      const set = new Set(["roofing", "ceiling_and_roofing_repair_and_service"]);
       const taxonomyMatch = set.has(business.taxonomyPrimary ?? "") || (business.taxonomyAlternates ?? []).some((t) => set.has(t));
       expect(taxonomyMatch, `taxonomy ${business.taxonomyPrimary} / ${business.taxonomyAlternates}`).toBe(true);
       expect(business.region).toBe("TX");
@@ -164,7 +164,7 @@ describe("campaign pipeline · has-website=no finds parked/dead leads via D17", 
       campaignInput({
         name: "No-website hunters",
         niche: "plumbers",
-        confirmedTaxonomy: ["plumber", "septic_system_service"],
+        confirmedTaxonomy: ["plumbing", "septic_service"],
         filters: { ...defaultFilters(), hasWebsite: "no" },
         smoke: true,
       }),

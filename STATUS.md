@@ -6,6 +6,9 @@
 Machine definition-of-done: gates G1–G8 green (204 tests) · mock-mode Playwright E2E 5/5 · keyless CI · `next build` clean · live-bucket probe verified the real Overture release schema (2026-08-19.0).
 Remaining = human/procurement items only: see BLOCKERS.md and the #Z checklist in HANDOFF.md.
 
+## Session 4 · 2026-09-07 — real-data validation
+B5 closed: taxonomy catalog (1,792 codes) derived from the release itself (canonical CSV gone upstream — D18); niche mappings/fixtures/G2 reconciled to the real vocabulary. FSQ graceful-skip added (missing optional token can't break the monthly chain — tested). **Real Delaware dry-run: 50,425 businesses, extract 18.1s + conflate 12.2s, gate 0.00% unresolved, 744 chains flagged, release diff computed** — the machine half of definition-of-done §7 now proven on real data. SimpleMaps (B9) bot-blocks scripts: stays a human browser download. 217 tests + E2E 5/5 green.
+
 ## Session 3 · 2026-09-06 — spec closure
 FSQ access probed live and pinned (B6: gated HF dataset, `dt=2026-08-11`, schema verified — the guide's "anonymous" is outdated; needs free-account HF_TOKEN). Closed the remaining partials: §3.5 Drive per-campaign subfolders · §3.2 retry-errors · §3.7 Settings concurrency limits · §4.0 release diff summary (new/changed/disappeared on the release row) · §3.1 ZIP entries in city lists · ops alert webhook (beyond-guide, user-approved). 215 tests + E2E 5/5 green. Still open by choice: D16 bbox-only fallback, GAPSWEEP pre-files P1–P5 (won't backfill), clean-VM compose-up (host step).
 
