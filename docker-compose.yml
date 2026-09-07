@@ -9,10 +9,10 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      DATABASE_PATH: /data/leadforge.db
+      # Local PGlite on the volume by default; set DATABASE_URL in .env to use Supabase instead.
+      PGLITE_DIR: /data/pg
       EXPORTS_DIR: /data/exports
       BACKUPS_DIR: /data/backups
-      CONFIG_DIR: /data/config
     volumes:
       - leadforge-data:/data
     # No ports published on purpose — access is through the tunnel only (§5).

@@ -59,16 +59,16 @@ export class MockPageSpeed implements PageSpeedProvider {
   }
 }
 
-export function pagespeedKey(): string {
+export async function pagespeedKey(): Promise<string> {
   return effectiveSecret("pagespeed_api_key", env.pagespeedApiKey());
 }
-export function getPageSpeed(): PageSpeedProvider {
+export async function getPageSpeed(): Promise<PageSpeedProvider> {
   if (env.mockMode) return new MockPageSpeed();
-  const key = pagespeedKey();
+  const key = await pagespeedKey();
   return key ? new RealPageSpeed(key) : new MockPageSpeed();
 }
-export function pagespeedAvailable(): boolean {
-  return env.mockMode || !!pagespeedKey();
+export async function pagespeedAvailable(): Promise<boolean> {
+  return env.mockMode || !!(await pagespeedKey());
 }
 
 // ---- daily quota tracking (shared across campaigns via the global scheduler) ----
@@ -77,50 +77,48 @@ function today(): string {
   return now().toISOString().slice(0, 10);
 }
 
-export function pagespeedQuotaRemaining(): number {
-  const limit = getSetting<number>("pagespeedDailyQuota", defaults.pagespeedDailyQuota) - defaults.pagespeedQuotaSafety;
-  const row = getDb()
+export async function pagespeedQuotaRemaining(): Promise<number> {
+  const limit = (await getSetting<number>("pagespeedDailyQuota", defaults.pagespeedDailyQuota)) - defaults.pagespeedQuotaSafety;
+  const [row] = await getDb()
     .select()
     .from(quotaUsage)
     .where(and(eq(quotaUsage.provider, "pagespeed"), eq(quotaUsage.day, today())))
-    .get();
+    .limit(1);
   return Math.max(0, limit - (row?.count ?? 0));
 }
 
-export function consumePagespeedQuota(): boolean {
-  if (pagespeedQuotaRemaining() <= 0) return false;
-  getDb()
+export async function consumePagespeedQuota(): Promise<boolean> {
+  if ((await pagespeedQuotaRemaining()) <= 0) return false;
+  await getDb()
     .insert(quotaUsage)
     .values({ provider: "pagespeed", day: today(), count: 1 })
     .onConflictDoUpdate({
       target: [quotaUsage.provider, quotaUsage.day],
       set: { count: sql`${quotaUsage.count} + 1` },
-    })
-    .run();
+    });
   return true;
 }
 
 // ---- 30-day per-domain cache ----
 
-export function cachedPagespeed(url: string): { mobileScore: number; lcpMs: number } | null {
+export async function cachedPagespeed(url: string): Promise<{ mobileScore: number; lcpMs: number } | null> {
   const domain = domainOf(url);
   if (!domain) return null;
-  const row = getDb().select().from(pagespeedCache).where(eq(pagespeedCache.domain, domain)).get();
+  const [row] = await getDb().select().from(pagespeedCache).where(eq(pagespeedCache.domain, domain)).limit(1);
   if (!row) return null;
   const ageMs = now().getTime() - new Date(row.fetchedAt).getTime();
   if (ageMs > defaults.pagespeedCacheDays * 86400_000) return null;
   return { mobileScore: row.mobileScore, lcpMs: row.lcpMs };
 }
 
-export function storePagespeed(url: string, result: { mobileScore: number; lcpMs: number }): void {
+export async function storePagespeed(url: string, result: { mobileScore: number; lcpMs: number }): Promise<void> {
   const domain = domainOf(url);
   if (!domain) return;
-  getDb()
+  await getDb()
     .insert(pagespeedCache)
     .values({ domain, mobileScore: result.mobileScore, lcpMs: result.lcpMs, fetchedAt: now().toISOString() })
     .onConflictDoUpdate({
       target: pagespeedCache.domain,
       set: { mobileScore: result.mobileScore, lcpMs: result.lcpMs, fetchedAt: now().toISOString() },
-    })
-    .run();
+    });
 }

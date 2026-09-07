@@ -16,7 +16,7 @@ export function candidateConditions(campaign: Campaign): SQL {
   const taxList = sql.join(tax.map((t) => sql`${t}`), sql`, `);
   parts.push(
     sql`(${businesses.taxonomyPrimary} IN (${taxList}) OR EXISTS (
-      SELECT 1 FROM json_each(coalesce(${businesses.taxonomyAlternates}, '[]')) je WHERE je.value IN (${taxList})))`,
+      SELECT 1 FROM jsonb_array_elements_text(coalesce(${businesses.taxonomyAlternates}, '[]'::jsonb)) je(value) WHERE je.value IN (${taxList})))`,
   );
 
   const stateList = sql.join(campaign.states.map((s) => sql`${s.toUpperCase()}`), sql`, `);
@@ -48,16 +48,16 @@ export function candidateConditions(campaign: Campaign): SQL {
   if (f.hasWebsite === "no")
     parts.push(sql`${businesses.websiteClass} IN ('none', 'social_only', 'aggregator', 'parked', 'dead')`);
 
-  if (f.excludeChains) parts.push(sql`${businesses.chain} = 0`);
+  if (f.excludeChains) parts.push(sql`${businesses.chain} = false`);
 
   if (f.sources?.length && f.sources.length < 3) {
-    const srcParts = f.sources.map((s) => sql`json_extract(${businesses.sources}, ${"$." + s}) IS NOT NULL`);
+    const srcParts = f.sources.map((s) => sql`(${businesses.sources} -> ${s}::text) IS NOT NULL`);
     parts.push(sql`(${sql.join(srcParts, sql` OR `)})`);
   }
 
   if (!f.includeContactless) {
     parts.push(
-      sql`(${businesses.phone} IS NOT NULL OR ${businesses.websiteRaw} IS NOT NULL OR coalesce(json_array_length(${businesses.emails}), 0) > 0)`,
+      sql`(${businesses.phone} IS NOT NULL OR ${businesses.websiteRaw} IS NOT NULL OR coalesce(jsonb_array_length(coalesce(${businesses.emails}, '[]'::jsonb)), 0) > 0)`,
     );
   }
 

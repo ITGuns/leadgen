@@ -43,6 +43,6 @@ export class MockAIProvider implements AIProvider {
   }
 
   async proposeTaxonomy(niche: string): Promise<string[]> {
-    return proposeOffline(niche).codes;
+    return (await proposeOffline(niche)).codes;
   }
 }

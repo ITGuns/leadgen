@@ -8,18 +8,14 @@ import { attachedCount } from "@/server/pipeline/run";
 
 export const GET = withAuth(async (_req, _identity, ctx) => {
   const { id } = await ctx.params;
-  const campaign = getCampaign(Number(id));
+  const campaign = await getCampaign(Number(id));
   if (!campaign) return Response.json({ error: "not found" }, { status: 404 });
-  const stalled = getDb()
-    .select()
-    .from(intents)
-    .where(eq(intents.campaignId, campaign.id))
-    .all()
-    .filter((i) => i.status === "stalled");
+  const rows = await getDb().select().from(intents).where(eq(intents.campaignId, campaign.id));
+  const stalled = rows.filter((i) => i.status === "stalled");
   return Response.json({
     campaign,
-    leadCount: attachedCount(campaign.id),
-    spendUSD: campaignSpendUSD(campaign.id),
+    leadCount: await attachedCount(campaign.id),
+    spendUSD: await campaignSpendUSD(campaign.id),
     stalledIntents: stalled,
   });
 });

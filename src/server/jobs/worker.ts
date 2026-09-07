@@ -1,5 +1,5 @@
 import PQueue from "p-queue";
-import { and, asc, desc, eq, isNull, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, lt, lte, or, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { jobs } from "@/db/schema";
 import { defaults, now } from "../config";
@@ -7,32 +7,35 @@ import { getSetting } from "../settings";
 import { getHandler, JobStopped, type JobRow } from "./registry";
 
 /**
- * ARCHITECTURE A4 — in-process worker over the persisted jobs table.
- * Single process; SQLite serializes claims. Jobs are resumable checkpoints:
- * on boot, `running` rows revert to `pending` and handlers continue from job.progress.
+ * ARCHITECTURE A4 (revised D19) — the persisted jobs table is the queue in BOTH runtimes:
+ *  · persistent (local dev / Docker): interval loop + p-queue, exactly as before
+ *  · serverless (Vercel): `runSlice(budgetMs)` — a cron-invoked, time-boxed pass that
+ *    claims due jobs and runs them with a deadline; handlers are checkpoint-resumable,
+ *    so an unfinished job simply goes back to pending (WITHOUT burning an attempt) and
+ *    the next slice continues it. Claims are atomic conditional UPDATE … RETURNING.
  */
 
-export function enqueueJob(
+export async function enqueueJob(
   type: string,
   payload?: Record<string, unknown>,
   opts?: { campaignId?: number; priority?: number; runAfter?: Date; maxAttempts?: number; dedupe?: boolean },
-): JobRow {
+): Promise<JobRow> {
   const db = getDb();
   if (opts?.dedupe) {
-    const existing = db
+    const [existing] = await db
       .select()
       .from(jobs)
       .where(
         and(
           eq(jobs.type, type),
-          sql`${jobs.payload} = ${JSON.stringify(payload ?? null)}`,
+          sql`${jobs.payload} = ${JSON.stringify(payload ?? null)}::jsonb`,
           or(eq(jobs.status, "pending"), eq(jobs.status, "running")),
         ),
       )
-      .get();
+      .limit(1);
     if (existing) return existing;
   }
-  return db
+  const [row] = await db
     .insert(jobs)
     .values({
       type,
@@ -43,17 +46,19 @@ export function enqueueJob(
       runAfter: opts?.runAfter ? opts.runAfter.toISOString() : null,
       createdAt: now().toISOString(),
     })
-    .returning()
-    .get();
+    .returning();
+  return row;
 }
 
-export function cancelJob(id: number): void {
-  const db = getDb();
-  db.update(jobs)
+export async function cancelJob(id: number): Promise<void> {
+  await getDb()
+    .update(jobs)
     .set({ status: "canceled", finishedAt: now().toISOString() })
-    .where(and(eq(jobs.id, id), or(eq(jobs.status, "pending"), eq(jobs.status, "running"))))
-    .run();
+    .where(and(eq(jobs.id, id), or(eq(jobs.status, "pending"), eq(jobs.status, "running"))));
 }
+
+/** A running job whose heartbeat went silent this long is considered orphaned. */
+const STALE_HEARTBEAT_MS = 10 * 60_000;
 
 export class Worker {
   private queue: PQueue;
@@ -65,19 +70,26 @@ export class Worker {
     this.queue = new PQueue({ concurrency });
   }
 
-  /** Crash recovery: anything left `running` from a previous process resumes as pending. */
-  recover(): number {
-    const res = getDb()
+  /** Crash recovery: `running` jobs from a dead process resume as pending.
+   * Persistent mode recovers everything at boot; serverless slices recover only
+   * stale-heartbeat orphans (another slice may legitimately be mid-job). */
+  async recover(onlyStale = false): Promise<number> {
+    const staleBefore = new Date(Date.now() - STALE_HEARTBEAT_MS).toISOString();
+    const rows = await getDb()
       .update(jobs)
       .set({ status: "pending", heartbeatAt: null })
-      .where(eq(jobs.status, "running"))
-      .run();
-    return res.changes;
+      .where(
+        onlyStale
+          ? and(eq(jobs.status, "running"), or(isNull(jobs.heartbeatAt), lt(jobs.heartbeatAt, staleBefore)))
+          : eq(jobs.status, "running"),
+      )
+      .returning({ id: jobs.id });
+    return rows.length;
   }
 
   start(): void {
     if (this.timer) return;
-    this.recover();
+    void this.recover();
     this.timer = setInterval(() => void this.tick(), this.tickMs);
     this.timer.unref?.();
   }
@@ -90,78 +102,116 @@ export class Worker {
     this.stopping = false;
   }
 
-  /** Claim up to available capacity and dispatch. Also callable directly in tests.
+  /** Claim up to available capacity and dispatch (persistent mode).
    *  Scheduling comparisons use REAL wall-clock time — the frozen mock clock is for
-   *  data timestamps only, and would make backoff retries never come due. */
+   *  data timestamps only. */
   async tick(): Promise<void> {
     if (this.stopping) return;
     const capacity = this.concurrency - this.queue.size - this.queue.pending;
     if (capacity <= 0) return;
-    const db = getDb();
+    const claimable = await this.claimables(capacity);
+    for (const job of claimable) {
+      const claimed = await this.claim(job);
+      if (!claimed) continue;
+      void this.queue.add(() => this.run(job.id, Infinity));
+    }
+  }
+
+  private async claimables(limit: number): Promise<JobRow[]> {
     const nowIso = new Date().toISOString();
-    const claimable = db
+    return getDb()
       .select()
       .from(jobs)
       .where(and(eq(jobs.status, "pending"), or(isNull(jobs.runAfter), lte(jobs.runAfter, nowIso))))
       .orderBy(desc(jobs.priority), asc(jobs.createdAt))
-      .limit(capacity)
-      .all();
-    for (const job of claimable) {
-      const claimed = db
-        .update(jobs)
-        .set({ status: "running", startedAt: nowIso, heartbeatAt: nowIso, attempts: job.attempts + 1 })
-        .where(and(eq(jobs.id, job.id), eq(jobs.status, "pending")))
-        .run();
-      if (claimed.changes === 0) continue;
-      void this.queue.add(() => this.run(job.id));
-    }
+      .limit(limit);
   }
 
-  /** Wait until nothing is pending or running (test/e2e helper). */
+  private async claim(job: JobRow): Promise<boolean> {
+    const nowIso = new Date().toISOString();
+    const rows = await getDb()
+      .update(jobs)
+      .set({ status: "running", startedAt: nowIso, heartbeatAt: nowIso, attempts: job.attempts + 1 })
+      .where(and(eq(jobs.id, job.id), eq(jobs.status, "pending")))
+      .returning({ id: jobs.id });
+    return rows.length > 0;
+  }
+
+  /**
+   * Serverless slice (D19): recover stale orphans, then run due jobs one at a time
+   * until the time budget is spent. Returns counts for the tick route's response.
+   */
+  async runSlice(budgetMs: number): Promise<{ ran: number; remaining: number }> {
+    const sliceEnd = Date.now() + budgetMs;
+    await this.recover(true);
+    let ran = 0;
+    for (;;) {
+      const timeLeft = sliceEnd - Date.now();
+      if (timeLeft < 5_000) break;
+      const [job] = await this.claimables(1);
+      if (!job) break;
+      if (!(await this.claim(job))) continue;
+      await this.run(job.id, sliceEnd - 2_000);
+      ran++;
+    }
+    const remaining = await this.openCount();
+    return { ran, remaining };
+  }
+
+  private async openCount(): Promise<number> {
+    const [row] = await getDb()
+      .select({ n: sql<number>`count(*)::int` })
+      .from(jobs)
+      .where(or(eq(jobs.status, "pending"), eq(jobs.status, "running")));
+    return row?.n ?? 0;
+  }
+
+  /** Wait until nothing is pending or running (test/e2e helper, persistent mode). */
   async drain(timeoutMs = 60_000): Promise<void> {
     const start = Date.now();
     for (;;) {
       await this.tick();
       await this.queue.onIdle();
-      const open = getDb()
-        .select({ n: sql<number>`count(*)` })
-        .from(jobs)
-        .where(or(eq(jobs.status, "pending"), eq(jobs.status, "running")))
-        .get();
-      if (!open?.n) return;
+      if ((await this.openCount()) === 0) return;
       if (Date.now() - start > timeoutMs) throw new Error("worker drain timeout");
       await new Promise((r) => setTimeout(r, 25));
     }
   }
 
-  private isCanceled(id: number): boolean {
-    const row = getDb().select({ status: jobs.status }).from(jobs).where(eq(jobs.id, id)).get();
+  private async isCanceled(id: number): Promise<boolean> {
+    const [row] = await getDb().select({ status: jobs.status }).from(jobs).where(eq(jobs.id, id)).limit(1);
     return row?.status === "canceled";
   }
 
-  private async run(id: number): Promise<void> {
+  private async run(id: number, deadline: number): Promise<void> {
     const db = getDb();
-    const job = db.select().from(jobs).where(eq(jobs.id, id)).get();
+    const [job] = await db.select().from(jobs).where(eq(jobs.id, id)).limit(1);
     if (!job || job.status !== "running") return;
     const handler = getHandler(job.type);
     const heartbeat = setInterval(() => {
-      db.update(jobs).set({ heartbeatAt: now().toISOString() }).where(eq(jobs.id, id)).run();
+      void db.update(jobs).set({ heartbeatAt: now().toISOString() }).where(eq(jobs.id, id));
     }, 5000);
     heartbeat.unref?.();
     let lastCancelCheck = 0;
+    let deadlineHit = false;
     const ctx = {
       job,
-      checkpoint: (progress: Record<string, unknown>) => {
+      deadline,
+      checkpoint: async (progress: Record<string, unknown>) => {
         const merged = { ...(job.progress as Record<string, unknown> | null), ...progress };
         job.progress = merged;
-        db.update(jobs).set({ progress: merged, heartbeatAt: now().toISOString() }).where(eq(jobs.id, id)).run();
+        await db.update(jobs).set({ progress: merged, heartbeatAt: now().toISOString() }).where(eq(jobs.id, id));
       },
       shouldStop: () => {
         if (this.stopping) return true;
+        if (Date.now() > deadline) {
+          deadlineHit = true;
+          return true;
+        }
         const t = Date.now();
         if (t - lastCancelCheck > 500) {
           lastCancelCheck = t;
-          this.canceledCache.set(id, this.isCanceled(id));
+          void this.isCanceled(id).then((c) => this.canceledCache.set(id, c));
         }
         return this.canceledCache.get(id) ?? false;
       },
@@ -169,34 +219,40 @@ export class Worker {
     try {
       if (!handler) throw new Error(`no handler registered for job type '${job.type}'`);
       await handler(ctx);
-      db.update(jobs)
+      await db
+        .update(jobs)
         .set({ status: "completed", finishedAt: now().toISOString() })
-        .where(and(eq(jobs.id, id), eq(jobs.status, "running")))
-        .run();
+        .where(and(eq(jobs.id, id), eq(jobs.status, "running")));
     } catch (err) {
       if (err instanceof JobStopped) {
-        // Canceled or shutdown: worker-stop → back to pending (resume later); cancel → keep canceled.
-        db.update(jobs)
-          .set({ status: this.isCanceled(id) ? "canceled" : "pending", finishedAt: null })
-          .where(and(eq(jobs.id, id), eq(jobs.status, "running")))
-          .run();
+        const canceled = await this.isCanceled(id);
+        // deadline/shutdown stops are NOT failures: back to pending without burning
+        // the attempt, so a long job can be sliced indefinitely (D19)
+        await db
+          .update(jobs)
+          .set(
+            canceled
+              ? { status: "canceled", finishedAt: now().toISOString() }
+              : { status: "pending", finishedAt: null, attempts: deadlineHit || this.stopping ? sql`greatest(${jobs.attempts} - 1, 0)` : job.attempts },
+          )
+          .where(and(eq(jobs.id, id), eq(jobs.status, "running")));
         return;
       }
       const message = err instanceof Error ? `${err.message}` : String(err);
-      const fresh = db.select().from(jobs).where(eq(jobs.id, id)).get();
+      const [fresh] = await db.select().from(jobs).where(eq(jobs.id, id)).limit(1);
       const attempts = fresh?.attempts ?? job.attempts + 1;
       const maxAttempts = fresh?.maxAttempts ?? job.maxAttempts;
       if (attempts < maxAttempts) {
         const backoffMs = Math.min(60_000, 2 ** attempts * 250);
-        db.update(jobs)
+        await db
+          .update(jobs)
           .set({ status: "pending", lastError: message, runAfter: new Date(Date.now() + backoffMs).toISOString() })
-          .where(and(eq(jobs.id, id), eq(jobs.status, "running")))
-          .run();
+          .where(and(eq(jobs.id, id), eq(jobs.status, "running")));
       } else {
-        db.update(jobs)
+        await db
+          .update(jobs)
           .set({ status: "failed", lastError: message, finishedAt: now().toISOString() })
-          .where(and(eq(jobs.id, id), eq(jobs.status, "running")))
-          .run();
+          .where(and(eq(jobs.id, id), eq(jobs.status, "running")));
         const { notifyFailure } = await import("../notify");
         void notifyFailure(
           `job #${id} (${job.type}) failed after ${attempts} attempt(s)`,
@@ -212,10 +268,10 @@ export class Worker {
 type G = typeof globalThis & { __leadforgeWorker?: Worker };
 const g = globalThis as G;
 
-export function getWorker(): Worker {
+export async function getWorker(): Promise<Worker> {
   if (!g.__leadforgeWorker) {
     // §3.7 — jobConcurrency is Settings-tunable; the singleton reads it at boot
-    g.__leadforgeWorker = new Worker(getSetting("jobConcurrency", defaults.jobConcurrency));
+    g.__leadforgeWorker = new Worker(await getSetting("jobConcurrency", defaults.jobConcurrency));
   }
   return g.__leadforgeWorker;
 }

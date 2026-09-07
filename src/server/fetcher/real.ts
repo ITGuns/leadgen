@@ -2,7 +2,6 @@ import PQueue from "p-queue";
 import fs from "node:fs";
 import path from "node:path";
 import { defaults } from "../config";
-import { getSetting } from "../settings";
 import type { FetchResult, Fetcher } from "../providers/types";
 import { parseRobots, robotsAllows, type RobotsRules } from "./robots";
 
@@ -19,18 +18,16 @@ export function userAgent(): string {
 }
 
 export class RealFetcher implements Fetcher {
-  // §3.7 — concurrency limits are runtime-tunable in Settings; read once at
-  // construction (the fetcher is a boot-time singleton, so changes apply on restart)
-  private globalLimit: number;
+  // §3.7 — concurrency limits are runtime-tunable in Settings; the async factory in
+  // fetcher/index.ts reads them once and passes them in (changes apply on restart)
   private perDomainLimit: number;
   private global: PQueue;
   private perDomain = new Map<string, PQueue>();
   private robotsCache = new Map<string, { rules: RobotsRules | null; at: number }>();
 
-  constructor() {
-    this.globalLimit = getSetting("fetchGlobal", defaults.fetchGlobal);
-    this.perDomainLimit = getSetting("fetchPerDomain", defaults.fetchPerDomain);
-    this.global = new PQueue({ concurrency: this.globalLimit });
+  constructor(globalLimit: number = defaults.fetchGlobal, perDomainLimit: number = defaults.fetchPerDomain) {
+    this.perDomainLimit = perDomainLimit;
+    this.global = new PQueue({ concurrency: globalLimit });
   }
 
   private domainQueue(host: string): PQueue {

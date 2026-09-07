@@ -1,23 +1,31 @@
-import { DuckDBInstance, type DuckDBConnection } from "@duckdb/node-api";
-import { env } from "../config";
+import type { DuckDBConnection } from "@duckdb/node-api";
+import { env, isServerless } from "../config";
 import { effectiveSecret } from "../secure-store";
 
 /**
  * One DuckDB in-memory instance per extract run. Real mode loads httpfs for the public
  * sources (ARCH A3.1): Overture is an anonymous S3 bucket; FSQ OS Places is a gated
- * HF dataset (free account, auto-approved — probed 2026-09-06) authenticated with a
- * DuckDB huggingface secret when HF_TOKEN is configured. Mock mode reads the bundled
- * parquet through the exact same SQL path (§4.7). Results come back as JSON —
- * `to_json(t)` per row — so nested structs arrive as plain JS values.
+ * HF dataset authenticated with a DuckDB huggingface secret when HF_TOKEN is set.
+ * Mock mode reads the bundled parquet through the exact same SQL path (§4.7).
+ *
+ * D19: the extract never runs on Vercel — the native DuckDB module stays out of the
+ * serverless bundle (dynamic import + tracing exclude); the monthly extract runs from
+ * any workstation via scripts/workstation-extract.ts straight into Supabase.
  */
 export async function withDuck<T>(fn: (conn: DuckDBConnection) => Promise<T>): Promise<T> {
+  if (isServerless()) {
+    throw new Error(
+      "the DuckDB extract does not run on serverless — run it from a workstation: DATABASE_URL=<supabase> npx tsx scripts/workstation-extract.ts <STATES> (HANDOFF · Monthly)",
+    );
+  }
+  const { DuckDBInstance } = await import("@duckdb/node-api");
   const instance = await DuckDBInstance.create(":memory:");
   const conn = await instance.connect();
   try {
     if (!env.mockMode) {
       await conn.run("INSTALL httpfs; LOAD httpfs;");
       await conn.run("SET s3_region='us-west-2';");
-      const hfToken = effectiveSecret("hf_token", env.hfToken());
+      const hfToken = await effectiveSecret("hf_token", env.hfToken());
       if (hfToken) {
         await conn.run(`CREATE SECRET hf (TYPE HUGGINGFACE, TOKEN '${hfToken.replaceAll("'", "''")}')`);
       }

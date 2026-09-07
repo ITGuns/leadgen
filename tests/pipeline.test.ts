@@ -27,36 +27,44 @@ function campaignInput(over: Partial<CampaignInput> = {}): CampaignInput {
   };
 }
 
+async function campaignRows(campaignId: number) {
+  return getDb()
+    .select({ lead: leads, business: businesses })
+    .from(campaignLeads)
+    .innerJoin(leads, eq(campaignLeads.leadId, leads.id))
+    .innerJoin(businesses, eq(leads.businessId, businesses.id))
+    .where(eq(campaignLeads.campaignId, campaignId));
+}
+
 describe("campaign pipeline over mock data", () => {
   let campaignId: number;
 
   beforeAll(async () => {
-    freshDb();
+    await freshDb();
     registerAllHandlers();
     const w = new Worker(1, 10);
-    enqueueJob("ingest_overture", { states: ["TX", "FL", "GA"], chain: true }, { maxAttempts: 1 });
+    await enqueueJob("ingest_overture", { states: ["TX", "FL", "GA"], chain: true }, { maxAttempts: 1 });
     await w.drain(120_000);
     // a client suppression that must be excluded from the pull
-    const victim = getDb()
+    const [victim] = await getDb()
       .select()
       .from(businesses)
       .where(and(eq(businesses.taxonomyPrimary, "roofing"), sql`phone IS NOT NULL`))
-      .get();
+      .limit(1);
     if (victim?.phone) {
-      getDb()
+      await getDb()
         .insert(suppressions)
-        .values({ kind: "client", phone: victim.phone, createdAt: new Date().toISOString(), source: "test" })
-        .run();
+        .values({ kind: "client", phone: victim.phone, createdAt: new Date().toISOString(), source: "test" });
     }
-    const c = createCampaign(campaignInput({ aiOwnerExtraction: true }), "test@gemfieldconsulting.com");
+    const c = await createCampaign(campaignInput({ aiOwnerExtraction: true }), "test@gemfieldconsulting.com");
     campaignId = c.id;
     expect(c.estimate!.totalUSD).toBe(0); // free path + mock AI costs nothing — $0 baseline holds
-    startCampaign(campaignId, "test@gemfieldconsulting.com");
+    await startCampaign(campaignId, "test@gemfieldconsulting.com");
     await w.drain(180_000);
   }, 240_000);
 
-  it("completes with a full stage trail and $0 spend", () => {
-    const c = getCampaign(campaignId);
+  it("completes with a full stage trail and $0 spend", async () => {
+    const c = await getCampaign(campaignId);
     expect(c).toBeTruthy();
     expect(c!.status).toBe("completed");
     expect(c!.currentStage).toBe("ready");
@@ -66,17 +74,11 @@ describe("campaign pipeline over mock data", () => {
     expect(counts.pulled).toBeLessThanOrEqual(200); // smoke cap
     expect(counts.scored).toBeGreaterThan(0);
     expect(counts.ready).toBeGreaterThan(0);
-    expect(campaignSpendUSD(campaignId)).toBe(0);
+    expect(await campaignSpendUSD(campaignId)).toBe(0);
   });
 
-  it("attaches only contactable, unsuppressed, filter-matching businesses", () => {
-    const rows = getDb()
-      .select({ lead: leads, business: businesses })
-      .from(campaignLeads)
-      .innerJoin(leads, eq(campaignLeads.leadId, leads.id))
-      .innerJoin(businesses, eq(leads.businessId, businesses.id))
-      .where(eq(campaignLeads.campaignId, campaignId))
-      .all();
+  it("attaches only contactable, unsuppressed, filter-matching businesses", async () => {
+    const rows = await campaignRows(campaignId);
     expect(rows.length).toBeGreaterThan(20);
     for (const { business } of rows) {
       const set = new Set(["roofing", "ceiling_and_roofing_repair_and_service"]);
@@ -87,18 +89,12 @@ describe("campaign pipeline over mock data", () => {
       const contactable = business.phone || business.websiteRaw || (business.emails ?? []).length > 0;
       expect(contactable).toBeTruthy();
     }
-    const c = getCampaign(campaignId);
+    const c = await getCampaign(campaignId);
     expect(c!.stageCounts!.suppressed_clients ?? 0).toBeGreaterThanOrEqual(0);
   });
 
-  it("scores every lead with reason chips and ranks no-website businesses on top", () => {
-    const rows = getDb()
-      .select({ lead: leads, business: businesses })
-      .from(campaignLeads)
-      .innerJoin(leads, eq(campaignLeads.leadId, leads.id))
-      .innerJoin(businesses, eq(leads.businessId, businesses.id))
-      .where(eq(campaignLeads.campaignId, campaignId))
-      .all();
+  it("scores every lead with reason chips and ranks no-website businesses on top", async () => {
+    const rows = await campaignRows(campaignId);
     for (const { lead } of rows) {
       expect(lead.score).not.toBeNull();
       expect((lead.scoreReasons ?? []).length).toBeGreaterThan(0);
@@ -108,13 +104,12 @@ describe("campaign pipeline over mock data", () => {
     expect(sorted[0].lead.score).toBeGreaterThanOrEqual(90);
   });
 
-  it("every extracted owner carries an evidence snippet (anti-hallucination invariant)", () => {
-    const owned = getDb()
+  it("every extracted owner carries an evidence snippet (anti-hallucination invariant)", async () => {
+    const owned = await getDb()
       .select({ lead: leads })
       .from(campaignLeads)
       .innerJoin(leads, eq(campaignLeads.leadId, leads.id))
-      .where(and(eq(campaignLeads.campaignId, campaignId), sql`${leads.ownerName} IS NOT NULL`))
-      .all();
+      .where(and(eq(campaignLeads.campaignId, campaignId), sql`${leads.ownerName} IS NOT NULL`));
     expect(owned.length).toBeGreaterThan(3); // mock plants owners on ~60% of real sites
     for (const { lead } of owned) {
       expect(lead.ownerEvidence).toBeTruthy();
@@ -123,44 +118,43 @@ describe("campaign pipeline over mock data", () => {
     }
   });
 
-  it("website classification resolved every fetched candidate (D17 universe)", () => {
-    const unknowns = getDb()
-      .select({ n: sql<number>`count(*)` })
+  it("website classification resolved every fetched candidate (D17 universe)", async () => {
+    const [row] = await getDb()
+      .select({ n: sql<number>`count(*)::int` })
       .from(campaignLeads)
       .innerJoin(leads, eq(campaignLeads.leadId, leads.id))
       .innerJoin(businesses, eq(leads.businessId, businesses.id))
       .where(
         and(eq(campaignLeads.campaignId, campaignId), sql`${businesses.websiteClass} = 'unknown' AND ${businesses.websiteRaw} IS NOT NULL`),
-      )
-      .get()!.n;
-    expect(unknowns).toBe(0);
+      );
+    expect(row!.n).toBe(0);
   });
 
   it("cross-campaign dedupe: a second campaign reuses the same lead rows", async () => {
-    const before = getDb().select({ n: sql<number>`count(*)` }).from(leads).get()!.n;
-    const c2 = createCampaign(campaignInput({ name: "Roofers TX again" }), "test@gemfieldconsulting.com");
-    startCampaign(c2.id, "test@gemfieldconsolidated.com");
+    const [beforeRow] = await getDb().select({ n: sql<number>`count(*)::int` }).from(leads);
+    const before = beforeRow!.n;
+    const c2 = await createCampaign(campaignInput({ name: "Roofers TX again" }), "test@gemfieldconsulting.com");
+    await startCampaign(c2.id, "test@gemfieldconsolidated.com");
     const w = new Worker(1, 10);
     await w.drain(120_000);
-    const after = getDb().select({ n: sql<number>`count(*)` }).from(leads).get()!.n;
-    expect(after).toBe(before); // same businesses → same lead rows, only membership differs
-    const membership = getDb()
-      .select({ n: sql<number>`count(*)` })
+    const [afterRow] = await getDb().select({ n: sql<number>`count(*)::int` }).from(leads);
+    expect(afterRow!.n).toBe(before); // same businesses → same lead rows, only membership differs
+    const [membershipRow] = await getDb()
+      .select({ n: sql<number>`count(*)::int` })
       .from(campaignLeads)
-      .where(eq(campaignLeads.campaignId, c2.id))
-      .get()!.n;
-    expect(membership).toBeGreaterThan(20);
+      .where(eq(campaignLeads.campaignId, c2.id));
+    expect(membershipRow!.n).toBeGreaterThan(20);
   }, 120_000);
 });
 
 describe("campaign pipeline · has-website=no finds parked/dead leads via D17", () => {
   it("pulls unknown candidates, classifies, and keeps only no-real-website leads", async () => {
-    freshDb();
+    await freshDb();
     registerAllHandlers();
     const w = new Worker(1, 10);
-    enqueueJob("ingest_overture", { states: ["TX"], chain: true }, { maxAttempts: 1 });
+    await enqueueJob("ingest_overture", { states: ["TX"], chain: true }, { maxAttempts: 1 });
     await w.drain(120_000);
-    const c = createCampaign(
+    const c = await createCampaign(
       campaignInput({
         name: "No-website hunters",
         niche: "plumbers",
@@ -170,15 +164,14 @@ describe("campaign pipeline · has-website=no finds parked/dead leads via D17", 
       }),
       "t@g.com",
     );
-    startCampaign(c.id, "t@g.com");
+    await startCampaign(c.id, "t@g.com");
     await w.drain(180_000);
-    const rows = getDb()
+    const rows = await getDb()
       .select({ business: businesses })
       .from(campaignLeads)
       .innerJoin(leads, eq(campaignLeads.leadId, leads.id))
       .innerJoin(businesses, eq(leads.businessId, businesses.id))
-      .where(eq(campaignLeads.campaignId, c.id))
-      .all();
+      .where(eq(campaignLeads.campaignId, c.id));
     expect(rows.length).toBeGreaterThan(5);
     for (const { business } of rows) {
       expect(["none", "social_only", "aggregator", "parked", "dead"]).toContain(business.websiteClass);
@@ -188,13 +181,13 @@ describe("campaign pipeline · has-website=no finds parked/dead leads via D17", 
 
 describe("campaign pipeline · paid top-up respects intents and the budget cap", () => {
   it("spends within cap + one page, records intents before submit, merges without dupes", async () => {
-    freshDb();
+    await freshDb();
     registerAllHandlers();
     const w = new Worker(1, 10);
-    enqueueJob("ingest_overture", { states: ["TX"], chain: true }, { maxAttempts: 1 });
+    await enqueueJob("ingest_overture", { states: ["TX"], chain: true }, { maxAttempts: 1 });
     await w.drain(120_000);
-    setSetting("monthlySpendCeilingUSD", 100); // #K sets the ceiling; the $0 default correctly blocks all paid calls
-    const c = createCampaign(
+    await setSetting("monthlySpendCeilingUSD", 100); // #K sets the ceiling; the $0 default correctly blocks all paid calls
+    const c = await createCampaign(
       campaignInput({
         name: "Topup run",
         niche: "roofers",
@@ -204,29 +197,28 @@ describe("campaign pipeline · paid top-up respects intents and the budget cap",
       }),
       "t@g.com",
     );
-    startCampaign(c.id, "t@g.com");
+    await startCampaign(c.id, "t@g.com");
     await w.drain(240_000);
 
-    const spend = campaignSpendUSD(c.id);
+    const spend = await campaignSpendUSD(c.id);
     expect(spend).toBeGreaterThan(0); // mock provider "bills"
     expect(spend).toBeLessThanOrEqual(0.5 + 0.15 + 1e-9); // cap + one page (50 records × $0.003)
 
-    const intentRows = getDb().select().from(intents).where(eq(intents.campaignId, c.id)).all();
+    const intentRows = await getDb().select().from(intents).where(eq(intents.campaignId, c.id));
     expect(intentRows.length).toBeGreaterThan(0);
     for (const i of intentRows) {
       expect(["fetched", "planned", "submitted", "stalled", "abandoned"]).toContain(i.status);
       if (i.status === "fetched") expect(i.actualCostUSD).toBeGreaterThan(0);
     }
-    const ledger = getDb().select().from(spendLedger).where(eq(spendLedger.campaignId, c.id)).all();
+    const ledger = await getDb().select().from(spendLedger).where(eq(spendLedger.campaignId, c.id));
     expect(ledger.length).toBeGreaterThan(0);
 
     // top-up merged records never duplicate an existing business identity
-    const dupes = getDb()
-      .select({ n: sql<number>`count(*)` })
+    const dupes = await getDb()
+      .select({ n: sql<number>`count(*)::int` })
       .from(businesses)
       .groupBy(businesses.identityKey)
-      .having(sql`count(*) > 1`)
-      .all();
+      .having(sql`count(*) > 1`);
     expect(dupes.length).toBe(0);
   }, 300_000);
 });

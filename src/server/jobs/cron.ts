@@ -20,14 +20,14 @@ function dayKey(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
-export function cronTick(at = now()): void {
+export async function cronTick(at = now()): Promise<void> {
   for (const c of CRONS) {
     if (!c.due(at)) continue;
     const markerKey = `cron:last:${c.name}`;
-    const last = getSetting<string>(markerKey, "");
+    const last = await getSetting<string>(markerKey, "");
     if (last === dayKey(at)) continue;
-    setSetting(markerKey, dayKey(at));
-    enqueueJob(c.jobType, {}, { dedupe: true });
+    await setSetting(markerKey, dayKey(at));
+    await enqueueJob(c.jobType, {}, { dedupe: true });
   }
 }
 
@@ -36,6 +36,6 @@ const g = globalThis as G;
 
 export function startCron(): void {
   if (g.__leadforgeCron) return;
-  g.__leadforgeCron = setInterval(() => cronTick(), 60_000);
+  g.__leadforgeCron = setInterval(() => void cronTick(), 60_000);
   g.__leadforgeCron.unref?.();
 }

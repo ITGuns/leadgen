@@ -14,29 +14,29 @@ import { fanOutCities } from "./fanout";
 
 const TOP_UP_PER_QUERY_LIMIT = 50;
 
-export function estimateCampaign(campaign: typeof campaigns.$inferSelect): CampaignEstimate {
+export async function estimateCampaign(campaign: typeof campaigns.$inferSelect): Promise<CampaignEstimate> {
   const db = getDb();
   const cond = candidateConditions(campaign);
   const cap = campaign.smoke ? defaults.smokeRecordLimit : campaign.caps.maxRecords;
 
-  const matched = db.select({ n: sql<number>`count(*)` }).from(businesses).where(cond).get()?.n ?? 0;
+  const [matchedRow] = await db.select({ n: sql<number>`count(*)::int` }).from(businesses).where(cond);
+  const matched = matchedRow?.n ?? 0;
   const plannedRecords = Math.min(matched, cap);
 
   // AI owner extraction runs only on real-site candidates — count those precisely
-  const withSite =
-    db
-      .select({ n: sql<number>`count(*)` })
-      .from(businesses)
-      .where(sql`${cond} AND ${businesses.websiteClass} IN ('real_site', 'unknown')`)
-      .get()?.n ?? 0;
+  const [withSiteRow] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(businesses)
+    .where(sql`${cond} AND ${businesses.websiteClass} IN ('real_site', 'unknown')`);
+  const withSite = withSiteRow?.n ?? 0;
   // rate of the provider that will actually run: real Haiku ≈ $0.001/site, mock = $0
   const aiSites = Math.min(withSite, plannedRecords);
-  const aiUSD = campaign.aiOwnerExtraction ? round2(aiSites * getAIProvider().costPerOwnerCallUSD) : 0;
+  const aiUSD = campaign.aiOwnerExtraction ? round2(aiSites * (await getAIProvider()).costPerOwnerCallUSD) : 0;
 
   let topUpUSD = 0;
   let citiesFannedOut: number | undefined;
   if (campaign.topUp?.enabled) {
-    const cities = fanOutCities(campaign.states, { cityList: campaign.cityList });
+    const cities = await fanOutCities(campaign.states, { cityList: campaign.cityList });
     citiesFannedOut = cities.length;
     const queries = cities.length; // one free-text query per city (§4.1)
     const topUpRecords = Math.min(queries * TOP_UP_PER_QUERY_LIMIT, cap);

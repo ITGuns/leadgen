@@ -18,12 +18,12 @@ export const POST = withAuth(async (req) => {
     cityList: body.data.cityList ?? null,
     topUp: body.data.topUp ?? null,
   } as unknown as typeof campaigns.$inferSelect;
-  const estimate = estimateCampaign(pseudo);
+  const estimate = await estimateCampaign(pseudo);
   return Response.json({
     estimate,
-    topUpAvailable: topUpAvailable(),
-    aiAvailable: aiAvailable(),
-    aiRateUSD: getAIProvider().costPerOwnerCallUSD,
+    topUpAvailable: await topUpAvailable(),
+    aiAvailable: await aiAvailable(),
+    aiRateUSD: (await getAIProvider()).costPerOwnerCallUSD,
     fitsCap: estimate.totalUSD <= body.data.caps.budgetCapUSD,
   });
 });

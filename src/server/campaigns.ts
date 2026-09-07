@@ -32,11 +32,11 @@ export const CampaignInputSchema = z.object({
 });
 export type CampaignInput = z.infer<typeof CampaignInputSchema>;
 
-export function createCampaign(input: CampaignInput, createdBy: string) {
+export async function createCampaign(input: CampaignInput, createdBy: string) {
   const catalog = taxonomyCatalog();
   const unknown = input.confirmedTaxonomy.filter((t) => !catalog.has(t));
   if (unknown.length) throw new Error(`taxonomy codes not in catalog: ${unknown.join(", ")}`);
-  const row = getDb()
+  const [row] = await getDb()
     .insert(campaigns)
     .values({
       name: input.name,
@@ -52,62 +52,62 @@ export function createCampaign(input: CampaignInput, createdBy: string) {
       createdBy,
       createdAt: now().toISOString(),
     })
-    .returning()
-    .get();
-  const estimate = estimateCampaign(row);
-  getDb().update(campaigns).set({ estimate }).where(eq(campaigns.id, row.id)).run();
-  audit(createdBy, "campaign.create", { id: row.id, name: row.name, niche: row.niche });
+    .returning();
+  const estimate = await estimateCampaign(row);
+  await getDb().update(campaigns).set({ estimate }).where(eq(campaigns.id, row.id));
+  await audit(createdBy, "campaign.create", { id: row.id, name: row.name, niche: row.niche });
   return { ...row, estimate };
 }
 
-export function startCampaign(id: number, actor: string) {
+export async function startCampaign(id: number, actor: string) {
   const db = getDb();
-  const c = db.select().from(campaigns).where(eq(campaigns.id, id)).get();
+  const [c] = await db.select().from(campaigns).where(eq(campaigns.id, id)).limit(1);
   if (!c) throw new Error("campaign not found");
   if (c.status === "running") return c;
   if (!["draft", "paused", "failed", "canceled"].includes(c.status)) {
     throw new Error(`cannot start a ${c.status} campaign`);
   }
-  const estimate = estimateCampaign(c);
+  const estimate = await estimateCampaign(c);
   if (estimate.totalUSD > c.caps.budgetCapUSD) {
     throw new Error(
       `estimate $${estimate.totalUSD.toFixed(2)} exceeds the hard budget cap $${c.caps.budgetCapUSD.toFixed(2)} — raise the cap or reduce scope`,
     );
   }
-  db.update(campaigns)
+  await db
+    .update(campaigns)
     .set({ status: "running", pauseRequested: false, cancelRequested: false, estimate })
-    .where(eq(campaigns.id, id))
-    .run();
-  enqueueJob("campaign_run", { campaignId: id }, { campaignId: id, dedupe: true, maxAttempts: 3 });
-  audit(actor, "campaign.start", { id, estimateUSD: estimate.totalUSD, smoke: c.smoke });
-  return db.select().from(campaigns).where(eq(campaigns.id, id)).get()!;
+    .where(eq(campaigns.id, id));
+  await enqueueJob("campaign_run", { campaignId: id }, { campaignId: id, dedupe: true, maxAttempts: 3 });
+  await audit(actor, "campaign.start", { id, estimateUSD: estimate.totalUSD, smoke: c.smoke });
+  const [updated] = await db.select().from(campaigns).where(eq(campaigns.id, id)).limit(1);
+  return updated!;
 }
 
-export function pauseCampaign(id: number, actor: string): void {
-  getDb().update(campaigns).set({ pauseRequested: true }).where(eq(campaigns.id, id)).run();
-  audit(actor, "campaign.pause", { id });
+export async function pauseCampaign(id: number, actor: string): Promise<void> {
+  await getDb().update(campaigns).set({ pauseRequested: true }).where(eq(campaigns.id, id));
+  await audit(actor, "campaign.pause", { id });
 }
 
-export function resumeCampaign(id: number, actor: string): void {
+export async function resumeCampaign(id: number, actor: string): Promise<void> {
   const db = getDb();
-  const c = db.select().from(campaigns).where(eq(campaigns.id, id)).get();
+  const [c] = await db.select().from(campaigns).where(eq(campaigns.id, id)).limit(1);
   if (!c) throw new Error("campaign not found");
   if (c.status !== "paused") throw new Error("campaign is not paused");
-  db.update(campaigns).set({ status: "running", pauseRequested: false }).where(eq(campaigns.id, id)).run();
-  enqueueJob("campaign_run", { campaignId: id }, { campaignId: id, dedupe: true });
-  audit(actor, "campaign.resume", { id });
+  await db.update(campaigns).set({ status: "running", pauseRequested: false }).where(eq(campaigns.id, id));
+  await enqueueJob("campaign_run", { campaignId: id }, { campaignId: id, dedupe: true });
+  await audit(actor, "campaign.resume", { id });
 }
 
-export function cancelCampaign(id: number, actor: string): void {
+export async function cancelCampaign(id: number, actor: string): Promise<void> {
   const db = getDb();
-  const c = db.select().from(campaigns).where(eq(campaigns.id, id)).get();
+  const [c] = await db.select().from(campaigns).where(eq(campaigns.id, id)).limit(1);
   if (!c) throw new Error("campaign not found");
   if (c.status === "running") {
-    db.update(campaigns).set({ cancelRequested: true }).where(eq(campaigns.id, id)).run();
+    await db.update(campaigns).set({ cancelRequested: true }).where(eq(campaigns.id, id));
   } else if (["draft", "paused"].includes(c.status)) {
-    db.update(campaigns).set({ status: "canceled", completedAt: now().toISOString() }).where(eq(campaigns.id, id)).run();
+    await db.update(campaigns).set({ status: "canceled", completedAt: now().toISOString() }).where(eq(campaigns.id, id));
   }
-  audit(actor, "campaign.cancel", { id });
+  await audit(actor, "campaign.cancel", { id });
 }
 
 /**
@@ -116,38 +116,39 @@ export function cancelCampaign(id: number, actor: string): void {
  * and PageSpeed (-1 sentinel) stages for this campaign's leads, then re-enqueues the
  * run; idempotent stages redo exactly the cleared work and re-score.
  */
-export function retryErrors(id: number, actor: string) {
+export async function retryErrors(id: number, actor: string) {
   const db = getDb();
-  const c = db.select().from(campaigns).where(eq(campaigns.id, id)).get();
+  const [c] = await db.select().from(campaigns).where(eq(campaigns.id, id)).limit(1);
   if (!c) throw new Error("campaign not found");
   if (!["completed", "failed"].includes(c.status)) throw new Error("retry is for completed/failed campaigns");
   const inCampaign = sql`${leads.id} IN (SELECT lead_id FROM campaign_leads WHERE campaign_id = ${id})`;
   const ts = now().toISOString();
-  const wc = db
+  const wc = await db
     .update(leads)
     .set({ websiteCheck: null, updatedAt: ts })
-    .where(sql`${inCampaign} AND json_extract(${leads.websiteCheck}, '$.error') = 'other'`)
-    .run();
-  const ps = db
+    .where(sql`${inCampaign} AND (${leads.websiteCheck} ->> 'error') = 'other'`)
+    .returning({ id: leads.id });
+  const ps = await db
     .update(leads)
     .set({ pagespeed: null, updatedAt: ts })
-    .where(sql`${inCampaign} AND json_extract(${leads.pagespeed}, '$.mobileScore') = -1`)
-    .run();
-  db.update(campaigns)
+    .where(sql`${inCampaign} AND (${leads.pagespeed} ->> 'mobileScore')::int = -1`)
+    .returning({ id: leads.id });
+  await db
+    .update(campaigns)
     .set({ stageErrors: {}, status: "running", pauseRequested: false, cancelRequested: false })
-    .where(eq(campaigns.id, id))
-    .run();
-  enqueueJob("campaign_run", { campaignId: id }, { campaignId: id, dedupe: true });
-  audit(actor, "campaign.retry_errors", { id, websiteChecksCleared: wc.changes, pagespeedCleared: ps.changes });
-  return { websiteChecksCleared: wc.changes, pagespeedCleared: ps.changes };
+    .where(eq(campaigns.id, id));
+  await enqueueJob("campaign_run", { campaignId: id }, { campaignId: id, dedupe: true });
+  await audit(actor, "campaign.retry_errors", { id, websiteChecksCleared: wc.length, pagespeedCleared: ps.length });
+  return { websiteChecksCleared: wc.length, pagespeedCleared: ps.length };
 }
 
-export function listCampaigns() {
-  return getDb().select().from(campaigns).orderBy(desc(campaigns.id)).all();
+export async function listCampaigns() {
+  return getDb().select().from(campaigns).orderBy(desc(campaigns.id));
 }
 
-export function getCampaign(id: number) {
-  return getDb().select().from(campaigns).where(eq(campaigns.id, id)).get();
+export async function getCampaign(id: number) {
+  const [c] = await getDb().select().from(campaigns).where(eq(campaigns.id, id)).limit(1);
+  return c;
 }
 
 export function defaultFilters(): CampaignFilters {

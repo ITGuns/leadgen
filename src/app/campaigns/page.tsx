@@ -13,8 +13,8 @@ const STATUS_STYLE: Record<string, string> = {
   draft: "text-zinc-400",
 };
 
-export default function CampaignsPage() {
-  const campaigns = listCampaigns();
+export default async function CampaignsPage() {
+  const campaigns = await listCampaigns();
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">

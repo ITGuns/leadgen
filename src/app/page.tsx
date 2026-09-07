@@ -8,14 +8,14 @@ import { fmtDate, fmtUSD, STATUS_LABEL } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-export default function Dashboard() {
-  const stats = dashboardStats();
-  const campaigns = listCampaigns().slice(0, 6);
-  const overture = activeRelease("overture");
-  const fsq = activeRelease("fsq");
-  const spend = monthSpendUSD();
-  const ceiling = monthlyCeilingUSD();
-  const lastBackup = getSetting<string | null>("lastBackupAt", null);
+export default async function Dashboard() {
+  const stats = await dashboardStats();
+  const campaigns = (await listCampaigns()).slice(0, 6);
+  const overture = await activeRelease("overture");
+  const fsq = await activeRelease("fsq");
+  const spend = await monthSpendUSD();
+  const ceiling = await monthlyCeilingUSD();
+  const lastBackup = await getSetting<string | null>("lastBackupAt", null);
   const byStatus = Object.fromEntries(stats.byStatus.map((s) => [s.status, s.n]));
 
   return (

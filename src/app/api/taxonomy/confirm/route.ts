@@ -8,7 +8,7 @@ export const POST = withAuth(async (req, identity) => {
   const catalog = taxonomyCatalog();
   const bad = codes.filter((c) => !catalog.has(c));
   if (bad.length) return Response.json({ error: `unknown codes: ${bad.join(", ")}` }, { status: 400 });
-  confirmTaxonomy(niche, codes, identity.email);
-  audit(identity.email, "taxonomy.confirm", { niche, codes });
+  await confirmTaxonomy(niche, codes, identity.email);
+  await audit(identity.email, "taxonomy.confirm", { niche, codes });
   return Response.json({ ok: true });
 });

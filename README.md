@@ -23,11 +23,15 @@ npx tsc --noEmit  # typecheck
 
 Everything to sign up for is in [docs/LEADFORGE_API_PROCUREMENT_GUIDE.md](docs/LEADFORGE_API_PROCUREMENT_GUIDE.md); the live checklist of what's still parked is [BLOCKERS.md](BLOCKERS.md). Short version:
 
+**Going real — Vercel + Supabase (chosen path, D19):** the full runbook is HANDOFF.md → *Deploy*. Short version: Supabase project (transaction-pooler `DATABASE_URL`, `SUPABASE_URL` + service-role key, private Storage bucket `exports`) → Vercel project with those env vars plus `CRON_SECRET`, `APP_SECRET`, `AUTH_TRUST_PLATFORM=1` + `OPERATOR_EMAIL` (keep Deployment Protection ON — D20) → deploy; migrations run themselves and `vercel.json`'s minute cron drives background jobs. Monthly Overture/FSQ extract runs from any workstation straight into Supabase: `DATABASE_URL=<pooler> npx tsx scripts/workstation-extract.ts TX FL GA`. Backups are Supabase-managed (D21).
+
+**Alternative (self-hosted Docker + Cloudflare tunnel):**
+
 1. Copy `.env.example` → `.env`; set `MOCK_MODE=0`, `APP_SECRET`, `OVERTURE_RELEASE` (2026-08-19.0 — verified live) and `FSQ_RELEASE` (2026-08-11) + `HF_TOKEN` (FSQ moved to a gated HF dataset; free account, auto-approved — BLOCKERS B6).
-2. Google Cloud: PageSpeed API key + OAuth client (Drive) → enter in Settings (stored encrypted on the volume). Connect Drive once (user OAuth / Shared Drive — never a bare service account).
+2. Google Cloud: PageSpeed API key + OAuth client (Drive) → enter in Settings (stored encrypted). Connect Drive once (user OAuth / Shared Drive — never a bare service account).
 3. Cloudflare Zero Trust: tunnel + Access app on `leads.gemfieldconsulting.com` → `CF_TUNNEL_TOKEN`, `CF_ACCESS_TEAM_DOMAIN`, `CF_ACCESS_AUD`. The app 401s every request without a valid Access JWT.
-4. Host with ≥4 GB RAM: `docker compose up -d --build`. The `/data` volume (DB, exports, backups, encrypted config) survives redeploys. No inbound ports — the tunnel dials out.
-5. Settings → Data → **Run monthly extract** (or run it on an office machine: `scripts/workstation-extract.ts`). Drop the pinned release's taxonomy file over `data/overture_taxonomy.csv` (B5) — the ingest gate reports unresolved category values until you do.
+4. Host with ≥4 GB RAM: `docker compose up -d --build`. The `/data` volume (PGlite DB, exports, backups) survives redeploys. No inbound ports — the tunnel dials out.
+5. Settings → Data → **Run monthly extract** (or on an office machine: `scripts/workstation-extract.ts`).
 
 ## Where things are
 

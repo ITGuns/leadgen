@@ -1,43 +1,87 @@
-import Database from "better-sqlite3";
-import { drizzle, type BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import path from "node:path";
 import fs from "node:fs";
+import postgres from "postgres";
+import { PGlite } from "@electric-sql/pglite";
+import { drizzle as drizzlePostgres } from "drizzle-orm/postgres-js";
+import { migrate as migratePostgres } from "drizzle-orm/postgres-js/migrator";
+import { drizzle as drizzlePglite, type PgliteDatabase } from "drizzle-orm/pglite";
+import { migrate as migratePglite } from "drizzle-orm/pglite/migrator";
 import * as schema from "./schema";
 import { env } from "@/server/config";
 
-export type DB = BetterSQLite3Database<typeof schema>;
+/**
+ * D19 — one Postgres schema, two drivers:
+ *  · DATABASE_URL set  → postgres-js against Supabase (use the transaction pooler URL;
+ *    prepared statements disabled for pooler compatibility, small pool for serverless)
+ *  · otherwise         → PGlite (in-process WASM Postgres) under .data/pg — keyless
+ *    local dev, CI, and the Docker volume all keep working with zero accounts
+ * Migrations run once at init; on a shared database they are serialized with a
+ * Postgres advisory lock so concurrent serverless cold-starts can't race.
+ */
 
-/** Open a database at `file`, apply pragmas + migrations. Used by the app singleton and by tests. */
-export function openDatabase(file: string): { db: DB; sqlite: Database.Database } {
-  if (file !== ":memory:") fs.mkdirSync(path.dirname(file), { recursive: true });
-  const sqlite = new Database(file);
-  sqlite.pragma("journal_mode = WAL");
-  sqlite.pragma("foreign_keys = ON");
-  sqlite.pragma("busy_timeout = 5000");
-  sqlite.pragma("synchronous = NORMAL");
-  const db = drizzle(sqlite, { schema });
-  migrate(db, { migrationsFolder: path.join(process.cwd(), "drizzle") });
-  return { db, sqlite };
-}
+export type DB = PgliteDatabase<typeof schema>;
 
-type G = typeof globalThis & { __leadforgeDb?: { db: DB; sqlite: Database.Database } };
+const MIGRATIONS = { migrationsFolder: path.join(process.cwd(), "drizzle") };
+const ADVISORY_LOCK_KEY = 727_274; // arbitrary app-wide constant
+
+type G = typeof globalThis & { __lfDb?: DB; __lfDbInit?: Promise<DB> };
 const g = globalThis as G;
 
-export function getDb(): DB {
-  if (!g.__leadforgeDb) g.__leadforgeDb = openDatabase(env.databasePath());
-  return g.__leadforgeDb.db;
-}
-export function getSqlite(): Database.Database {
-  getDb();
-  return g.__leadforgeDb!.sqlite;
+async function open(): Promise<DB> {
+  const url = env.databaseUrl();
+  if (url) {
+    const client = postgres(url, {
+      prepare: false, // Supabase transaction pooler compatibility
+      max: process.env.VERCEL ? 1 : 5,
+      idle_timeout: 20,
+      connect_timeout: 15,
+    });
+    const db = drizzlePostgres(client, { schema }) as unknown as DB;
+    await client`select pg_advisory_lock(${ADVISORY_LOCK_KEY})`;
+    try {
+      await migratePostgres(db as never, MIGRATIONS);
+    } finally {
+      await client`select pg_advisory_unlock(${ADVISORY_LOCK_KEY})`;
+    }
+    return db;
+  }
+  const dir = env.pgliteDir();
+  fs.mkdirSync(dir, { recursive: true });
+  const pglite = new PGlite(dir);
+  const db = drizzlePglite(pglite, { schema });
+  await migratePglite(db, MIGRATIONS);
+  // Flush freshly-created (still-empty) relation files to the FS backend NOW: without
+  // this, a read of an untouched table can 58P01 ("could not open file") if heavy
+  // first writes to other tables land before the first automatic checkpoint.
+  await pglite.exec("CHECKPOINT");
+  return db;
 }
 
-/** Test helper: swap the singleton for an isolated in-memory database. */
-export function openTestDatabase(): { db: DB; sqlite: Database.Database } {
-  const opened = openDatabase(":memory:");
-  g.__leadforgeDb = opened;
-  return opened;
+export async function initDb(): Promise<DB> {
+  if (g.__lfDb) return g.__lfDb;
+  if (!g.__lfDbInit) g.__lfDbInit = open();
+  g.__lfDb = await g.__lfDbInit;
+  return g.__lfDb;
+}
+
+/** Synchronous accessor — boot()/tests await initDb() first, so query sites stay tidy. */
+export function getDb(): DB {
+  if (!g.__lfDb) throw new Error("database not initialized — await initDb() (boot does this before serving)");
+  return g.__lfDb;
+}
+
+/** Test helper: swap the singleton for an isolated in-memory PGlite database. */
+export async function openTestDatabase(): Promise<DB> {
+  const pglite = new PGlite(); // in-memory
+  const db = drizzlePglite(pglite, { schema });
+  await migratePglite(db, MIGRATIONS);
+  g.__lfDb = db;
+  g.__lfDbInit = Promise.resolve(db);
+  return db;
+}
+
+export function isSharedDatabase(): boolean {
+  return !!env.databaseUrl();
 }
 
 export { schema };

@@ -17,40 +17,45 @@ function input(cityList: string[] | null): CampaignInput {
   };
 }
 
+async function planned(cityList: string[] | null): Promise<number> {
+  const campaign = await createCampaign(input(cityList), "t@g.com");
+  return (await estimateCampaign(campaign)).plannedRecords;
+}
+
 describe("city/ZIP list precision", () => {
   let all: number;
   beforeAll(async () => {
-    freshDb();
+    await freshDb();
     registerAllHandlers();
-    enqueueJob("ingest_overture", { states: ["TX"], chain: true }, { maxAttempts: 1 });
+    await enqueueJob("ingest_overture", { states: ["TX"], chain: true }, { maxAttempts: 1 });
     await new Worker(1, 10).drain(120_000);
-    all = estimateCampaign(createCampaign(input(null), "t@g.com")).plannedRecords;
+    all = await planned(null);
     expect(all).toBeGreaterThan(30);
   }, 180_000);
 
-  it("city names narrow the pull", () => {
-    const austin = estimateCampaign(createCampaign(input(["Austin"]), "t@g.com")).plannedRecords;
+  it("city names narrow the pull", async () => {
+    const austin = await planned(["Austin"]);
     expect(austin).toBeGreaterThan(0);
     expect(austin).toBeLessThan(all);
   });
 
-  it("5-digit ZIPs match postal codes — same universe as the city they belong to (fixture: Austin=78701)", () => {
-    const byCity = estimateCampaign(createCampaign(input(["austin"]), "t@g.com")).plannedRecords;
-    const byZip = estimateCampaign(createCampaign(input(["78701"]), "t@g.com")).plannedRecords;
+  it("5-digit ZIPs match postal codes — same universe as the city they belong to (fixture: Austin=78701)", async () => {
+    const byCity = await planned(["austin"]);
+    const byZip = await planned(["78701"]);
     expect(byZip).toBe(byCity);
   });
 
-  it("mixed lists OR together", () => {
-    const austin = estimateCampaign(createCampaign(input(["Austin"]), "t@g.com")).plannedRecords;
-    const dallas = estimateCampaign(createCampaign(input(["Dallas"]), "t@g.com")).plannedRecords;
-    const mixed = estimateCampaign(createCampaign(input(["78701", "Dallas"]), "t@g.com")).plannedRecords;
+  it("mixed lists OR together", async () => {
+    const austin = await planned(["Austin"]);
+    const dallas = await planned(["Dallas"]);
+    const mixed = await planned(["78701", "Dallas"]);
     expect(mixed).toBe(austin + dallas); // fixture cities are disjoint
   });
 
-  it("fan-out uses city-name entries only and never zeroes out on ZIP-only lists", () => {
-    const named = fanOutCities(["TX"], { cityList: ["Austin", "78701"] });
+  it("fan-out uses city-name entries only and never zeroes out on ZIP-only lists", async () => {
+    const named = await fanOutCities(["TX"], { cityList: ["Austin", "78701"] });
     expect(named.map((c) => c.city)).toEqual(["Austin"]);
-    const zipOnly = fanOutCities(["TX"], { cityList: ["78701"] });
+    const zipOnly = await fanOutCities(["TX"], { cityList: ["78701"] });
     expect(zipOnly.length).toBeGreaterThan(1); // falls back to the full state fan-out
   });
 });

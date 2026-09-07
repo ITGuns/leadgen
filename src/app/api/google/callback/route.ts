@@ -7,14 +7,14 @@ export const GET = withAuth(async (req, identity) => {
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
-  const expected = getSetting<string>("googleOauthState", "");
+  const expected = await getSetting<string>("googleOauthState", "");
   if (!code || !state || !expected || state !== expected) {
     return Response.redirect(new URL("/settings?google=state_mismatch", url.origin), 302);
   }
-  setSetting("googleOauthState", "");
+  await setSetting("googleOauthState", "");
   try {
     await exchangeCode(code);
-    audit(identity.email, "drive.connected", {});
+    await audit(identity.email, "drive.connected", {});
     return Response.redirect(new URL("/settings?google=connected", url.origin), 302);
   } catch (err) {
     const message = err instanceof Error ? err.message : "exchange failed";

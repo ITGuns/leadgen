@@ -1,6 +1,6 @@
-# LeadForge — multi-stage build (ARCH A1). Native modules (better-sqlite3, DuckDB)
-# ship linux prebuilds; the toolchain layer exists only as a fallback for platforms
-# without them. Runtime is the Next standalone output + traced node_modules.
+# LeadForge — multi-stage build (ARCH A1). The database is PGlite (WASM Postgres,
+# no native build) on the /data volume, or Supabase via DATABASE_URL. DuckDB ships
+# linux prebuilds; the toolchain layer is only a fallback. Runtime = Next standalone.
 
 FROM node:22-bookworm-slim AS deps
 WORKDIR /app
@@ -33,7 +33,7 @@ COPY --from=build --chown=leadforge:leadforge /app/config ./config
 COPY --from=build --chown=leadforge:leadforge /app/fixtures/mock ./fixtures/mock
 
 USER leadforge
-# /data survives redeploys — DATABASE_PATH, EXPORTS_DIR, BACKUPS_DIR, CONFIG_DIR point here
+# /data survives redeploys — PGLITE_DIR, EXPORTS_DIR, BACKUPS_DIR point here
 VOLUME ["/data"]
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \

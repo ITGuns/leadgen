@@ -18,5 +18,5 @@ export const GET = withAuth(async (req) => {
     page: p.get("page") ? Number(p.get("page")) : undefined,
     pageSize: p.get("pageSize") ? Number(p.get("pageSize")) : undefined,
   };
-  return Response.json(listLeads(filters));
+  return Response.json(await listLeads(filters));
 });

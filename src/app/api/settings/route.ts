@@ -19,26 +19,26 @@ export const GET = withAuth(async () => {
   return Response.json({
     mockMode: env.mockMode,
     keys: {
-      pagespeed: !!pagespeedKey(),
-      anthropic: !!anthropicKey(),
-      outscraper: !!outscraperKey(),
-      googleClientId: !!googleClientId(),
-      googleClientSecret: !!googleClientSecret(),
-      hf: !!effectiveSecret("hf_token", env.hfToken()),
-      alertWebhook: !!effectiveSecret("alert_webhook_url", ""),
+      pagespeed: !!(await pagespeedKey()),
+      anthropic: !!(await anthropicKey()),
+      outscraper: !!(await outscraperKey()),
+      googleClientId: !!(await googleClientId()),
+      googleClientSecret: !!(await googleClientSecret()),
+      hf: !!(await effectiveSecret("hf_token", env.hfToken())),
+      alertWebhook: !!(await effectiveSecret("alert_webhook_url", "")),
     },
-    drive: { connected: driveConfigured(), folderId: driveFolderId() },
+    drive: { connected: await driveConfigured(), folderId: await driveFolderId() },
     ops: {
-      monthlySpendCeilingUSD: monthlyCeilingUSD(),
-      monthSpendUSD: monthSpendUSD(),
-      pagespeedDailyQuota: getSetting("pagespeedDailyQuota", defaults.pagespeedDailyQuota),
-      pagespeedQuotaRemaining: pagespeedQuotaRemaining(),
-      cityPopulationFloor: getSetting("cityPopulationFloor", defaults.cityPopulationFloor),
-      jobConcurrency: getSetting("jobConcurrency", defaults.jobConcurrency),
-      fetchGlobal: getSetting("fetchGlobal", defaults.fetchGlobal),
-      fetchPerDomain: getSetting("fetchPerDomain", defaults.fetchPerDomain),
-      lastBackupAt: getSetting<string | null>("lastBackupAt", null),
-      lastBackupFile: getSetting<string | null>("lastBackupFile", null),
+      monthlySpendCeilingUSD: await monthlyCeilingUSD(),
+      monthSpendUSD: await monthSpendUSD(),
+      pagespeedDailyQuota: await getSetting("pagespeedDailyQuota", defaults.pagespeedDailyQuota),
+      pagespeedQuotaRemaining: await pagespeedQuotaRemaining(),
+      cityPopulationFloor: await getSetting("cityPopulationFloor", defaults.cityPopulationFloor),
+      jobConcurrency: await getSetting("jobConcurrency", defaults.jobConcurrency),
+      fetchGlobal: await getSetting("fetchGlobal", defaults.fetchGlobal),
+      fetchPerDomain: await getSetting("fetchPerDomain", defaults.fetchPerDomain),
+      lastBackupAt: await getSetting<string | null>("lastBackupAt", null),
+      lastBackupFile: await getSetting<string | null>("lastBackupFile", null),
     },
     env: {
       overtureRelease: env.overtureRelease() || "(unset — mock uses bundled fixture)",
@@ -64,32 +64,32 @@ export const POST = withAuth(async (req, identity) => {
   };
   const changed: string[] = [];
   if (typeof body.monthlySpendCeilingUSD === "number" && body.monthlySpendCeilingUSD >= 0) {
-    setSetting("monthlySpendCeilingUSD", body.monthlySpendCeilingUSD);
+    await setSetting("monthlySpendCeilingUSD", body.monthlySpendCeilingUSD);
     changed.push("monthlySpendCeilingUSD");
   }
   if (typeof body.pagespeedDailyQuota === "number" && body.pagespeedDailyQuota > 0) {
-    setSetting("pagespeedDailyQuota", Math.min(body.pagespeedDailyQuota, 25_000));
+    await setSetting("pagespeedDailyQuota", Math.min(body.pagespeedDailyQuota, 25_000));
     changed.push("pagespeedDailyQuota");
   }
   if (typeof body.cityPopulationFloor === "number" && body.cityPopulationFloor >= 0) {
-    setSetting("cityPopulationFloor", body.cityPopulationFloor);
+    await setSetting("cityPopulationFloor", body.cityPopulationFloor);
     changed.push("cityPopulationFloor");
   }
   // §3.7 concurrency limits — singletons read these at boot, so a restart applies them
   if (typeof body.jobConcurrency === "number" && body.jobConcurrency >= 1 && body.jobConcurrency <= 8) {
-    setSetting("jobConcurrency", Math.round(body.jobConcurrency));
+    await setSetting("jobConcurrency", Math.round(body.jobConcurrency));
     changed.push("jobConcurrency");
   }
   if (typeof body.fetchGlobal === "number" && body.fetchGlobal >= 1 && body.fetchGlobal <= 32) {
-    setSetting("fetchGlobal", Math.round(body.fetchGlobal));
+    await setSetting("fetchGlobal", Math.round(body.fetchGlobal));
     changed.push("fetchGlobal");
   }
   if (typeof body.fetchPerDomain === "number" && body.fetchPerDomain >= 1 && body.fetchPerDomain <= 4) {
-    setSetting("fetchPerDomain", Math.round(body.fetchPerDomain));
+    await setSetting("fetchPerDomain", Math.round(body.fetchPerDomain));
     changed.push("fetchPerDomain");
   }
   if (typeof body.driveFolderId === "string") {
-    secureSet("google_drive_folder_id", body.driveFolderId.trim());
+    await secureSet("google_drive_folder_id", body.driveFolderId.trim());
     changed.push("driveFolderId");
   }
   const keyStoreNames: Record<string, string> = {
@@ -104,10 +104,10 @@ export const POST = withAuth(async (req, identity) => {
   for (const [k, storeName] of Object.entries(keyStoreNames)) {
     const v = body.keys?.[k as keyof typeof body.keys];
     if (typeof v === "string" && v.trim()) {
-      secureSet(storeName, v.trim());
+      await secureSet(storeName, v.trim());
       changed.push(`key:${k}`);
     }
   }
-  audit(identity.email, "settings.update", { changed }); // names only, never values
+  await audit(identity.email, "settings.update", { changed }); // names only, never values
   return Response.json({ ok: true, changed });
 });

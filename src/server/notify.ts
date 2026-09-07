@@ -7,7 +7,7 @@ import { effectiveSecret } from "./secure-store";
  * never break or slow the worker, and silence (no URL) is a valid configuration.
  */
 export async function notifyFailure(subject: string, detail: string): Promise<void> {
-  const url = effectiveSecret("alert_webhook_url", "");
+  const url = await effectiveSecret("alert_webhook_url", "").catch(() => "");
   if (!url) return;
   try {
     await fetch(url, {

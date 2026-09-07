@@ -17,11 +17,11 @@ describe("campaign retry-errors", () => {
   const w = new Worker(1, 10);
 
   beforeAll(async () => {
-    freshDb();
+    await freshDb();
     registerAllHandlers();
-    enqueueJob("ingest_overture", { states: ["TX"], chain: true }, { maxAttempts: 1 });
+    await enqueueJob("ingest_overture", { states: ["TX"], chain: true }, { maxAttempts: 1 });
     await w.drain(120_000);
-    const c = createCampaign(
+    const c = await createCampaign(
       {
         name: "retry test", niche: "roofers", confirmedTaxonomy: ["roofing", "ceiling_and_roofing_repair_and_service"],
         states: ["TX"], filters: defaultFilters(), caps: { maxRecords: 5000, budgetCapUSD: 0 },
@@ -30,75 +30,69 @@ describe("campaign retry-errors", () => {
       "t@g.com",
     );
     campaignId = c.id;
-    startCampaign(campaignId, "t@g.com");
+    await startCampaign(campaignId, "t@g.com");
     await w.drain(180_000);
 
     // simulate stage failures on two real-site leads (the markers the stages write on unexpected errors)
-    const realSite = getDb()
+    const realSite = await getDb()
       .select({ lead: leads })
       .from(campaignLeads)
       .innerJoin(leads, eq(campaignLeads.leadId, leads.id))
       .innerJoin(businesses, eq(leads.businessId, businesses.id))
       .where(sql`campaign_leads.campaign_id = ${campaignId} AND ${businesses.websiteClass} = 'real_site'`)
-      .limit(2)
-      .all();
+      .limit(2);
     expect(realSite.length).toBe(2);
     erroredCheckLeadId = realSite[0].lead.id;
     erroredPagespeedLeadId = realSite[1].lead.id;
     const ts = new Date().toISOString();
-    getDb().update(leads)
+    await getDb().update(leads)
       .set({ websiteCheck: { ok: false, error: "other", fetchedAt: ts } })
-      .where(eq(leads.id, erroredCheckLeadId))
-      .run();
-    getDb().update(leads)
+      .where(eq(leads.id, erroredCheckLeadId));
+    await getDb().update(leads)
       .set({ pagespeed: { mobileScore: -1, lcpMs: -1, fetchedAt: ts } })
-      .where(eq(leads.id, erroredPagespeedLeadId))
-      .run();
-    getDb().run(sql`UPDATE campaigns SET stage_errors = '{"website_check":1,"pagespeed":1}' WHERE id = ${campaignId}`);
+      .where(eq(leads.id, erroredPagespeedLeadId));
+    await getDb().execute(sql`UPDATE campaigns SET stage_errors = '{"website_check":1,"pagespeed":1}' WHERE id = ${campaignId}`);
   }, 300_000);
 
-  it("clears only the failure markers, re-runs, and heals both leads", async () => {
-    const cleared = retryErrors(campaignId, "t@g.com");
-    expect(cleared.websiteChecksCleared).toBe(1);
-    expect(cleared.pagespeedCleared).toBe(1);
-    expect(getCampaign(campaignId)!.status).toBe("running");
-    expect(getCampaign(campaignId)!.stageErrors).toEqual({});
-
-    await w.drain(180_000);
-    const c = getCampaign(campaignId)!;
-    expect(c.status).toBe("completed");
-
-    const healedCheck = getDb().select().from(leads).where(eq(leads.id, erroredCheckLeadId)).get()!;
-    expect(healedCheck.websiteCheck).not.toBeNull();
-    expect(healedCheck.websiteCheck!.ok).toBe(true);
-    const healedPagespeed = getDb().select().from(leads).where(eq(leads.id, erroredPagespeedLeadId)).get()!;
-    expect(healedPagespeed.pagespeed).not.toBeNull();
-    expect(healedPagespeed.pagespeed!.mobileScore).toBeGreaterThanOrEqual(0);
-  }, 240_000);
-
-  it("legit classifications (dead/timeout) are results, not errors — retry leaves them alone", () => {
-    const deadish = getDb()
-      .select({ n: sql<number>`count(*)` })
+  async function deadishCount(): Promise<number> {
+    const rows = (await getDb()
+      .select({ n: sql<number>`count(*)::int` })
       .from(campaignLeads)
       .innerJoin(leads, eq(campaignLeads.leadId, leads.id))
-      .where(sql`campaign_leads.campaign_id = ${campaignId} AND json_extract(${leads.websiteCheck}, '$.error') IN ('dns','timeout','refused')`)
-      .get()!.n;
-    const cleared = retryErrors(campaignId, "t@g.com");
+      .where(sql`campaign_leads.campaign_id = ${campaignId} AND (${leads.websiteCheck} ->> 'error') IN ('dns','timeout','refused')`));
+    return rows[0]!.n;
+  }
+
+  it("clears only the failure markers, re-runs, and heals both leads", async () => {
+    const cleared = await retryErrors(campaignId, "t@g.com");
+    expect(cleared.websiteChecksCleared).toBe(1);
+    expect(cleared.pagespeedCleared).toBe(1);
+    expect((await getCampaign(campaignId))!.status).toBe("running");
+    expect((await getCampaign(campaignId))!.stageErrors).toEqual({});
+
+    await w.drain(180_000);
+    const c = (await getCampaign(campaignId))!;
+    expect(c.status).toBe("completed");
+
+    const [healedCheck] = await getDb().select().from(leads).where(eq(leads.id, erroredCheckLeadId)).limit(1);
+    expect(healedCheck!.websiteCheck).not.toBeNull();
+    expect(healedCheck!.websiteCheck!.ok).toBe(true);
+    const [healedPagespeed] = await getDb().select().from(leads).where(eq(leads.id, erroredPagespeedLeadId)).limit(1);
+    expect(healedPagespeed!.pagespeed).not.toBeNull();
+    expect(healedPagespeed!.pagespeed!.mobileScore).toBeGreaterThanOrEqual(0);
+  }, 240_000);
+
+  it("legit classifications (dead/timeout) are results, not errors — retry leaves them alone", async () => {
+    const deadish = await deadishCount();
+    const cleared = await retryErrors(campaignId, "t@g.com");
     expect(cleared.websiteChecksCleared).toBe(0); // nothing marked 'other' remains
-    expect(deadish).toBe(
-      getDb()
-        .select({ n: sql<number>`count(*)` })
-        .from(campaignLeads)
-        .innerJoin(leads, eq(campaignLeads.leadId, leads.id))
-        .where(sql`campaign_leads.campaign_id = ${campaignId} AND json_extract(${leads.websiteCheck}, '$.error') IN ('dns','timeout','refused')`)
-        .get()!.n,
-    );
+    expect(deadish).toBe(await deadishCount());
   });
 
   it("refuses to retry a running campaign", async () => {
     await w.drain(180_000); // settle the run started by the previous test
-    getDb().run(sql`UPDATE campaigns SET status = 'running' WHERE id = ${campaignId}`);
-    expect(() => retryErrors(campaignId, "t@g.com")).toThrow(/completed\/failed/);
-    getDb().run(sql`UPDATE campaigns SET status = 'completed' WHERE id = ${campaignId}`);
+    await getDb().execute(sql`UPDATE campaigns SET status = 'running' WHERE id = ${campaignId}`);
+    await expect(retryErrors(campaignId, "t@g.com")).rejects.toThrow(/completed\/failed/);
+    await getDb().execute(sql`UPDATE campaigns SET status = 'completed' WHERE id = ${campaignId}`);
   }, 200_000);
 });

@@ -23,10 +23,10 @@ const MAX_PER_RUN = 500;
 
 export async function runFreshness(ctx: JobContext): Promise<void> {
   const db = getDb();
-  const fetcher = getFetcher();
+  const fetcher = await getFetcher();
   const cutoff = new Date(now().getTime() - RECHECK_AFTER_DAYS * 86400_000).toISOString();
 
-  const stale = db
+  const stale = await db
     .select({ lead: leads, business: businesses })
     .from(leads)
     .innerJoin(businesses, eq(leads.businessId, businesses.id))
@@ -37,8 +37,7 @@ export async function runFreshness(ctx: JobContext): Promise<void> {
         or(isNull(leads.lastVerifiedAt), lt(leads.lastVerifiedAt, cutoff)),
       ),
     )
-    .limit(MAX_PER_RUN)
-    .all();
+    .limit(MAX_PER_RUN);
 
   let rechecked = 0;
   let launched = 0;
@@ -60,25 +59,23 @@ export async function runFreshness(ctx: JobContext): Promise<void> {
       }
       const mobileScore = lead.pagespeed && lead.pagespeed.mobileScore >= 0 ? lead.pagespeed.mobileScore : null;
       const { score, reasons } = computeScore({ websiteClass: outcome.websiteClass, check: outcome.check, mobileScore });
-      db.transaction(() => {
-        db.update(businesses).set({ websiteClass: outcome.websiteClass, updatedAt: ts }).where(eq(businesses.id, business.id)).run();
-        db.update(leads)
-          .set({ websiteCheck: outcome.check, score, scoreReasons: reasons, tags: [...tags], lastVerifiedAt: ts, updatedAt: ts })
-          .where(eq(leads.id, lead.id))
-          .run();
-      });
+      await db.update(businesses).set({ websiteClass: outcome.websiteClass, updatedAt: ts }).where(eq(businesses.id, business.id));
+      await db
+        .update(leads)
+        .set({ websiteCheck: outcome.check, score, scoreReasons: reasons, tags: [...tags], lastVerifiedAt: ts, updatedAt: ts })
+        .where(eq(leads.id, lead.id));
       rechecked++;
     } catch {
       // freshness is best-effort; leave the lead for the next sweep
     }
-    if (rechecked % 50 === 0) ctx.checkpoint({ rechecked, launched, died });
+    if (rechecked % 50 === 0) await ctx.checkpoint({ rechecked, launched, died });
   }
 
   // leads whose business vanished from the active release (§4.0 release diffing feeds this)
-  const rel = activeRelease("overture");
+  const rel = await activeRelease("overture");
   let disappeared = 0;
   if (rel) {
-    const gone = db
+    const gone = await db
       .select({ lead: leads })
       .from(leads)
       .innerJoin(businesses, eq(leads.businessId, businesses.id))
@@ -88,16 +85,15 @@ export async function runFreshness(ctx: JobContext): Promise<void> {
           sql`${businesses.gersId} IS NOT NULL AND coalesce(${businesses.lastSeenRelease}, '') != ${rel.releaseId}`,
         ),
       )
-      .limit(2000)
-      .all();
+      .limit(2000);
     const ts = now().toISOString();
     for (const { lead } of gone) {
       const tags = new Set(lead.tags ?? []);
       if (tags.has("not-in-latest-release")) continue;
       tags.add("not-in-latest-release");
-      db.update(leads).set({ tags: [...tags], updatedAt: ts }).where(eq(leads.id, lead.id)).run();
+      await db.update(leads).set({ tags: [...tags], updatedAt: ts }).where(eq(leads.id, lead.id));
       disappeared++;
     }
   }
-  ctx.checkpoint({ rechecked, launched, died, disappeared, done: true });
+  await ctx.checkpoint({ rechecked, launched, died, disappeared, done: true });
 }

@@ -19,47 +19,44 @@ export function queryHash(provider: string, query: unknown): string {
 }
 
 /** Idempotent: returns the existing intent for an identical (provider, query). */
-export function recordIntent(provider: string, query: unknown, campaignId: number | null, estCostUSD: number) {
+export async function recordIntent(provider: string, query: unknown, campaignId: number | null, estCostUSD: number) {
   const db = getDb();
   const hash = queryHash(provider, query);
-  const existing = db.select().from(intents).where(eq(intents.queryHash, hash)).get();
+  const existing = (await db.select().from(intents).where(eq(intents.queryHash, hash)).limit(1))[0];
   if (existing) return existing;
   const ts = now().toISOString();
-  return db
+  const [row] = await db
     .insert(intents)
     .values({ provider, queryHash: hash, query, campaignId, estCostUSD, createdAt: ts, updatedAt: ts })
-    .returning()
-    .get();
+    .returning();
+  return row;
 }
 
-export function updateIntent(id: number, patch: Partial<typeof intents.$inferInsert>): void {
-  getDb()
+export async function updateIntent(id: number, patch: Partial<typeof intents.$inferInsert>): Promise<void> {
+  await getDb()
     .update(intents)
     .set({ ...patch, updatedAt: now().toISOString() })
-    .where(eq(intents.id, id))
-    .run();
+    .where(eq(intents.id, id));
 }
 
-export function campaignSpendUSD(campaignId: number): number {
-  const row = getDb()
-    .select({ total: sql<number>`coalesce(sum(${spendLedger.amountUSD}), 0)` })
+export async function campaignSpendUSD(campaignId: number): Promise<number> {
+  const [row] = await getDb()
+    .select({ total: sql<number>`coalesce(sum(${spendLedger.amountUSD}), 0)::float` })
     .from(spendLedger)
-    .where(eq(spendLedger.campaignId, campaignId))
-    .get();
+    .where(eq(spendLedger.campaignId, campaignId));
   return row?.total ?? 0;
 }
 
-export function monthSpendUSD(): number {
+export async function monthSpendUSD(): Promise<number> {
   const monthStart = now().toISOString().slice(0, 7) + "-01";
-  const row = getDb()
-    .select({ total: sql<number>`coalesce(sum(${spendLedger.amountUSD}), 0)` })
+  const [row] = await getDb()
+    .select({ total: sql<number>`coalesce(sum(${spendLedger.amountUSD}), 0)::float` })
     .from(spendLedger)
-    .where(and(gte(spendLedger.createdAt, monthStart), eq(spendLedger.kind, "actual")))
-    .get();
+    .where(and(gte(spendLedger.createdAt, monthStart), eq(spendLedger.kind, "actual")));
   return row?.total ?? 0;
 }
 
-export function monthlyCeilingUSD(): number {
+export async function monthlyCeilingUSD(): Promise<number> {
   return getSetting<number>("monthlySpendCeilingUSD", env.monthlySpendCeilingUSD());
 }
 
@@ -67,34 +64,34 @@ export function monthlyCeilingUSD(): number {
  * Throws before the call if spending `nextCallUSD` more would exceed the campaign cap
  * or the monthly ceiling. Overshoot is bounded by one call/page (G6 invariant).
  */
-export function budgetGuard(campaignId: number, nextCallUSD: number): void {
+export async function budgetGuard(campaignId: number, nextCallUSD: number): Promise<void> {
   if (nextCallUSD <= 0) return;
-  const campaign = getDb().select().from(campaigns).where(eq(campaigns.id, campaignId)).get();
+  const [campaign] = await getDb().select().from(campaigns).where(eq(campaigns.id, campaignId)).limit(1);
   if (!campaign) throw new Error(`budgetGuard: campaign ${campaignId} not found`);
   const cap = campaign.caps.budgetCapUSD;
-  const spent = campaignSpendUSD(campaignId);
+  const spent = await campaignSpendUSD(campaignId);
   if (spent + nextCallUSD > cap) throw new BudgetExceededError("campaign", spent + nextCallUSD, cap);
-  const ceiling = monthlyCeilingUSD();
-  const monthSpent = monthSpendUSD();
+  const ceiling = await monthlyCeilingUSD();
+  const monthSpent = await monthSpendUSD();
   if (monthSpent + nextCallUSD > ceiling) throw new BudgetExceededError("monthly", monthSpent + nextCallUSD, ceiling);
 }
 
-export function recordSpend(
+export async function recordSpend(
   provider: string,
   campaignId: number | null,
   amountUSD: number,
   kind: "actual" | "estimated",
   detail?: string,
-): void {
+): Promise<void> {
   if (amountUSD === 0) return;
   const db = getDb();
-  db.insert(spendLedger)
-    .values({ provider, campaignId, amountUSD, kind, detail, createdAt: now().toISOString() })
-    .run();
+  await db
+    .insert(spendLedger)
+    .values({ provider, campaignId, amountUSD, kind, detail, createdAt: now().toISOString() });
   if (campaignId != null) {
-    db.update(campaigns)
+    await db
+      .update(campaigns)
       .set({ spendUSD: sql`${campaigns.spendUSD} + ${amountUSD}` })
-      .where(eq(campaigns.id, campaignId))
-      .run();
+      .where(eq(campaigns.id, campaignId));
   }
 }

@@ -8,7 +8,9 @@ import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from "jose";
  * Defense in depth: API routes ALSO verify via withAuth (unit-tested in G8).
  */
 
-const PUBLIC_PATHS = new Set(["/api/health"]);
+// /api/jobs/tick carries its own Bearer CRON_SECRET check (D19) — Vercel Cron
+// requests never have a CF Access JWT.
+const PUBLIC_PATHS = new Set(["/api/health", "/api/jobs/tick"]);
 
 type G = typeof globalThis & { __lfProxyJwks?: { key: JWTVerifyGetKey; domain: string } };
 const g = globalThis as G;
@@ -23,6 +25,10 @@ function jwks(domain: string): JWTVerifyGetKey {
 export default async function proxy(req: NextRequest) {
   const mock = (process.env.MOCK_MODE ?? "1") === "1" || (process.env.MOCK_MODE ?? "").toLowerCase() === "true";
   if (mock) return NextResponse.next();
+  // D20 — Vercel Deployment Protection (or another platform gate) fronts the app;
+  // the platform authenticated the request before it reached us. Explicit opt-in.
+  const trustPlatform = (process.env.AUTH_TRUST_PLATFORM ?? "") === "1" || (process.env.AUTH_TRUST_PLATFORM ?? "").toLowerCase() === "true";
+  if (trustPlatform) return NextResponse.next();
   const { pathname } = req.nextUrl;
   if (PUBLIC_PATHS.has(pathname)) return NextResponse.next();
 

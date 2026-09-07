@@ -5,9 +5,12 @@ export type JobRow = typeof jobs.$inferSelect;
 export type JobContext = {
   job: JobRow;
   /** Persist a resumable checkpoint (merged into job.progress). */
-  checkpoint(progress: Record<string, unknown>): void;
-  /** True when the job was canceled or the worker is shutting down — exit cleanly ASAP. */
+  checkpoint(progress: Record<string, unknown>): Promise<void>;
+  /** True when the job was canceled, the worker is shutting down, or a serverless
+   * slice's time budget is exhausted — exit cleanly ASAP (checkpoint + JobStopped). */
   shouldStop(): boolean;
+  /** Absolute epoch-ms deadline for this slice (Infinity in persistent mode). */
+  deadline: number;
 };
 
 export class JobStopped extends Error {

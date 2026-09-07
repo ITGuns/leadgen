@@ -1,5 +1,5 @@
 import path from "node:path";
-import { sql } from "drizzle-orm";
+import { inArray } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { placesFsq } from "@/db/schema";
 import { env, now } from "../config";
@@ -69,29 +69,29 @@ type FsqRow = {
 /** FSQ is OPTIONAL gap-fill (§4.0): in real mode without access configured, the
  * extract skips gracefully and the chain continues to conflation — a missing free
  * HF token must never block the monthly ingest. */
-export function fsqConfigured(): boolean {
+export async function fsqConfigured(): Promise<boolean> {
   if (env.mockMode) return true;
   if (env.fsqBaseUrl()) return true; // custom mirror needs no token
-  return !!(env.fsqRelease() && effectiveSecret("hf_token", env.hfToken()));
+  return !!(env.fsqRelease() && (await effectiveSecret("hf_token", env.hfToken())));
 }
 
 export async function runFsqExtract(ctx: JobContext): Promise<void> {
   const db = getDb();
   const payload = (ctx.job.payload ?? {}) as { states?: string[]; chain?: boolean };
   const states = payload.states ?? ["TX", "FL", "GA"];
-  if (!fsqConfigured()) {
-    ctx.checkpoint({
+  if (!(await fsqConfigured())) {
+    await ctx.checkpoint({
       skipped: true,
       reason: "FSQ gap-fill not configured (set FSQ_RELEASE + HF_TOKEN, or FSQ_BASE_URL — BLOCKERS B6); continuing without gap-fill",
     });
     if (payload.chain) {
       const { enqueueJob } = await import("../jobs/worker");
-      enqueueJob("conflate", {}, { dedupe: true });
+      await enqueueJob("conflate", {}, { dedupe: true });
     }
     return;
   }
   const releaseId = fsqReleaseId();
-  const release = ensureReleaseRow("fsq", releaseId, states);
+  const release = await ensureReleaseRow("fsq", releaseId, states);
   const progress = (ctx.job.progress ?? {}) as { stateIndex?: number; rowCounts?: Record<string, number> };
   const rowCounts: Record<string, number> = progress.rowCounts ?? {};
 
@@ -116,24 +116,22 @@ export async function runFsqExtract(ctx: JobContext): Promise<void> {
           lng: r.longitude,
           releaseId,
         }));
-      db.transaction(() => {
+      await db.transaction(async (tx) => {
         for (let c = 0; c < values.length; c += 300) {
           const chunk = values.slice(c, c + 300);
-          db.delete(placesFsq)
-            .where(sql`${placesFsq.fsqId} IN (${sql.join(chunk.map((v) => sql`${v.fsqId}`), sql`, `)})`)
-            .run();
-          db.insert(placesFsq).values(chunk).run();
+          await tx.delete(placesFsq).where(inArray(placesFsq.fsqId, chunk.map((v) => v.fsqId)));
+          await tx.insert(placesFsq).values(chunk);
         }
       });
       rowCounts[state] = values.length;
-      ctx.checkpoint({ stateIndex: i + 1, rowCounts, at: now().toISOString() });
+      await ctx.checkpoint({ stateIndex: i + 1, rowCounts, at: now().toISOString() });
     }
   });
 
   // FSQ is gap-fill only — no band gate of its own; activate and hand off to conflation.
-  activateRelease("fsq", release.id, { rowCounts });
+  await activateRelease("fsq", release.id, { rowCounts });
   if (payload.chain) {
     const { enqueueJob } = await import("../jobs/worker");
-    enqueueJob("conflate", {}, { dedupe: true });
+    await enqueueJob("conflate", {}, { dedupe: true });
   }
 }

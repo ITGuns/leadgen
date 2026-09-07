@@ -1,6 +1,7 @@
 import { openTestDatabase, type DB } from "@/db/client";
-import type Database from "better-sqlite3";
 
-export function freshDb(): { db: DB; sqlite: Database.Database } {
-  return openTestDatabase();
+/** In-memory PGlite database, migrated and registered as the active DB for the suite. */
+export async function freshDb(): Promise<{ db: DB }> {
+  const db = await openTestDatabase();
+  return { db };
 }

@@ -7,14 +7,14 @@ import { getSetting } from "@/server/settings";
 
 export const GET = withAuth(async () => {
   return Response.json({
-    ...dashboardStats(),
-    monthSpendUSD: monthSpendUSD(),
-    monthlyCeilingUSD: monthlyCeilingUSD(),
+    ...(await dashboardStats()),
+    monthSpendUSD: await monthSpendUSD(),
+    monthlyCeilingUSD: await monthlyCeilingUSD(),
     releases: {
-      overture: activeRelease("overture") ?? null,
-      fsq: activeRelease("fsq") ?? null,
+      overture: (await activeRelease("overture")) ?? null,
+      fsq: (await activeRelease("fsq")) ?? null,
     },
-    pagespeedQuotaRemaining: pagespeedQuotaRemaining(),
-    lastBackup: getSetting<string | null>("lastBackupAt", null),
+    pagespeedQuotaRemaining: await pagespeedQuotaRemaining(),
+    lastBackup: await getSetting<string | null>("lastBackupAt", null),
   });
 });

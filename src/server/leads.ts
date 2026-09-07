@@ -23,7 +23,7 @@ export type LeadFilters = {
   pageSize?: number;
 };
 
-export function listLeads(f: LeadFilters) {
+export async function listLeads(f: LeadFilters) {
   const db = getDb();
   const parts: SQL[] = [sql`1=1`];
   if (f.q) {
@@ -41,7 +41,7 @@ export function listLeads(f: LeadFilters) {
   if (f.ownerFound === true) parts.push(sql`${leads.ownerName} IS NOT NULL`);
   if (f.ownerFound === false) parts.push(sql`${leads.ownerName} IS NULL`);
   if (f.assignee) parts.push(sql`${leads.assignee} = ${f.assignee}`);
-  if (f.tag) parts.push(sql`EXISTS (SELECT 1 FROM json_each(coalesce(${leads.tags}, '[]')) jt WHERE jt.value = ${f.tag})`);
+  if (f.tag) parts.push(sql`coalesce(${leads.tags}, '[]'::jsonb) ? ${f.tag}::text`);
   if (f.campaignId) {
     parts.push(
       sql`EXISTS (SELECT 1 FROM campaign_leads cl WHERE cl.lead_id = ${leads.id} AND cl.campaign_id = ${f.campaignId})`,
@@ -61,26 +61,24 @@ export function listLeads(f: LeadFilters) {
   const pageSize = Math.min(f.pageSize ?? 50, 200);
   const page = Math.max(f.page ?? 1, 1);
 
-  const total =
-    db
-      .select({ n: sql<number>`count(*)` })
-      .from(leads)
-      .innerJoin(businesses, eq(leads.businessId, businesses.id))
-      .where(where)
-      .get()?.n ?? 0;
+  const [totalRow] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(leads)
+    .innerJoin(businesses, eq(leads.businessId, businesses.id))
+    .where(where);
+  const total = totalRow?.n ?? 0;
 
-  const rows = db
+  const rows = await db
     .select({ lead: leads, business: businesses })
     .from(leads)
     .innerJoin(businesses, eq(leads.businessId, businesses.id))
     .where(where)
     .orderBy(order)
     .limit(pageSize)
-    .offset((page - 1) * pageSize)
-    .all();
+    .offset((page - 1) * pageSize);
 
-  const dnc = loadSuppressionSets("dnc");
-  const client = loadSuppressionSets("client");
+  const dnc = await loadSuppressionSets("dnc");
+  const client = await loadSuppressionSets("client");
   return {
     total,
     page,
@@ -94,24 +92,23 @@ export function listLeads(f: LeadFilters) {
   };
 }
 
-export function getLeadDetail(id: number) {
+export async function getLeadDetail(id: number) {
   const db = getDb();
-  const row = db
+  const [row] = await db
     .select({ lead: leads, business: businesses })
     .from(leads)
     .innerJoin(businesses, eq(leads.businessId, businesses.id))
     .where(eq(leads.id, id))
-    .get();
+    .limit(1);
   if (!row) return null;
-  const leadNotes = db.select().from(notes).where(eq(notes.leadId, id)).orderBy(desc(notes.id)).all();
-  const memberships = db
+  const leadNotes = await db.select().from(notes).where(eq(notes.leadId, id)).orderBy(desc(notes.id));
+  const memberships = await db
     .select({ id: campaigns.id, name: campaigns.name, addedAt: campaignLeads.addedAt, status: campaigns.status })
     .from(campaignLeads)
     .innerJoin(campaigns, eq(campaignLeads.campaignId, campaigns.id))
-    .where(eq(campaignLeads.leadId, id))
-    .all();
-  const dnc = loadSuppressionSets("dnc");
-  const client = loadSuppressionSets("client");
+    .where(eq(campaignLeads.leadId, id));
+  const dnc = await loadSuppressionSets("dnc");
+  const client = await loadSuppressionSets("client");
   return {
     ...row,
     notes: leadNotes,
@@ -123,7 +120,7 @@ export function getLeadDetail(id: number) {
 
 const LEAD_STATUSES = ["new", "contacted", "interested", "not_interested", "dnc"] as const;
 
-export function patchLead(
+export async function patchLead(
   id: number,
   patch: { status?: string; assignee?: string | null; tags?: string[] },
   actor: string,
@@ -136,37 +133,41 @@ export function patchLead(
   }
   if (patch.assignee !== undefined) set.assignee = patch.assignee || null;
   if (patch.tags !== undefined) set.tags = patch.tags.map((t) => t.trim()).filter(Boolean).slice(0, 20);
-  db.update(leads).set(set).where(eq(leads.id, id)).run();
-  if (patch.status === "dnc") audit(actor, "lead.dnc", { leadId: id });
+  await db.update(leads).set(set).where(eq(leads.id, id));
+  if (patch.status === "dnc") await audit(actor, "lead.dnc", { leadId: id });
   return getLeadDetail(id);
 }
 
-export function bulkPatchLeads(ids: number[], patch: { status?: string; assignee?: string | null; tags?: string[] }, actor: string): number {
+export async function bulkPatchLeads(
+  ids: number[],
+  patch: { status?: string; assignee?: string | null; tags?: string[] },
+  actor: string,
+): Promise<number> {
   let n = 0;
   for (const id of ids.slice(0, 1000)) {
-    patchLead(id, patch, actor);
+    await patchLead(id, patch, actor);
     n++;
   }
-  audit(actor, "lead.bulk", { count: n, patch });
+  await audit(actor, "lead.bulk", { count: n, patch });
   return n;
 }
 
-export function addNote(leadId: number, author: string, body: string) {
-  return getDb()
+export async function addNote(leadId: number, author: string, body: string) {
+  const [row] = await getDb()
     .insert(notes)
     .values({ leadId, author, body: body.slice(0, 4000), createdAt: now().toISOString() })
-    .returning()
-    .get();
+    .returning();
+  return row;
 }
 
-export function dashboardStats() {
+export async function dashboardStats() {
   const db = getDb();
-  const one = <T>(q: { get(): T | undefined }, dflt: T): T => q.get() ?? dflt;
-  const businessCount = one(db.select({ n: sql<number>`count(*)` }).from(businesses), { n: 0 }).n;
-  const leadCount = one(db.select({ n: sql<number>`count(*)` }).from(leads), { n: 0 }).n;
-  const byStatus = db.select({ status: leads.status, n: sql<number>`count(*)` }).from(leads).groupBy(leads.status).all();
-  const hotLeads = one(db.select({ n: sql<number>`count(*)` }).from(leads).where(sql`score >= 80`), { n: 0 }).n;
-  const ownersFound = one(db.select({ n: sql<number>`count(*)` }).from(leads).where(sql`owner_name IS NOT NULL`), { n: 0 }).n;
-  const recentAudit = db.select().from(auditLog).orderBy(desc(auditLog.id)).limit(8).all();
+  const count = async (q: Promise<{ n: number }[]>) => (await q)[0]?.n ?? 0;
+  const businessCount = await count(db.select({ n: sql<number>`count(*)::int` }).from(businesses));
+  const leadCount = await count(db.select({ n: sql<number>`count(*)::int` }).from(leads));
+  const byStatus = await db.select({ status: leads.status, n: sql<number>`count(*)::int` }).from(leads).groupBy(leads.status);
+  const hotLeads = await count(db.select({ n: sql<number>`count(*)::int` }).from(leads).where(sql`score >= 80`));
+  const ownersFound = await count(db.select({ n: sql<number>`count(*)::int` }).from(leads).where(sql`owner_name IS NOT NULL`));
+  const recentAudit = await db.select().from(auditLog).orderBy(desc(auditLog.id)).limit(8);
   return { businessCount, leadCount, byStatus, hotLeads, ownersFound, recentAudit };
 }

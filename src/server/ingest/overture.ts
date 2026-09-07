@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { eq, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { placesOverture, releases } from "@/db/schema";
 import { env, now } from "../config";
@@ -98,7 +98,7 @@ export async function runOvertureExtract(ctx: JobContext): Promise<void> {
   const payload = (ctx.job.payload ?? {}) as { states?: string[]; chain?: boolean };
   const states = payload.states ?? ["TX", "FL", "GA"];
   const releaseId = overtureReleaseId();
-  const release = ensureReleaseRow("overture", releaseId, states);
+  const release = await ensureReleaseRow("overture", releaseId, states);
   const progress = (ctx.job.progress ?? {}) as { stateIndex?: number; rowCounts?: Record<string, number> };
   const rowCounts: Record<string, number> = progress.rowCounts ?? {};
 
@@ -129,44 +129,40 @@ export async function runOvertureExtract(ctx: JobContext): Promise<void> {
           operatingStatus: r.operating_status ?? "unknown",
           releaseId,
         }));
-      // Staging semantics: latest-wins per GERS id (delete+insert, chunked under the
-      // SQLite bind limit). A gate-failed release never reaches conflation, so the
-      // conflated `businesses` view stays on the previous release either way.
-      db.transaction(() => {
-        for (let c = 0; c < values.length; c += 200) {
-          const chunk = values.slice(c, c + 200);
-          db.delete(placesOverture)
-            .where(sql`${placesOverture.gersId} IN (${sql.join(chunk.map((v) => sql`${v.gersId}`), sql`, `)})`)
-            .run();
-          db.insert(placesOverture).values(chunk).run();
+      // Staging semantics: latest-wins per GERS id (delete+insert, chunked). A gate-failed
+      // release never reaches conflation, so `businesses` stays on the previous release.
+      await db.transaction(async (tx) => {
+        for (let c = 0; c < values.length; c += 500) {
+          const chunk = values.slice(c, c + 500);
+          await tx.delete(placesOverture).where(inArray(placesOverture.gersId, chunk.map((v) => v.gersId)));
+          await tx.insert(placesOverture).values(chunk);
         }
       });
       rowCounts[state] = values.length;
-      ctx.checkpoint({ stateIndex: i + 1, rowCounts, at: ts });
+      await ctx.checkpoint({ stateIndex: i + 1, rowCounts, at: ts });
     }
   });
 
-  db.update(releases).set({ rowCounts }).where(eq(releases.id, release.id)).run();
-  const gate = runOvertureGate(releaseId, states, rowCounts);
+  await db.update(releases).set({ rowCounts }).where(eq(releases.id, release.id));
+  const gate = await runOvertureGate(releaseId, states, rowCounts);
   if (!gate.pass) {
-    failRelease(release.id, gate);
+    await failRelease(release.id, gate);
     throw new Error(`ingest gate FAILED for overture ${releaseId}: ${gate.failures.join("; ")} — previous release kept active`);
   }
-  activateRelease("overture", release.id, gate);
-  ctx.checkpoint({ gate });
+  await activateRelease("overture", release.id, gate);
+  await ctx.checkpoint({ gate });
 
   if (payload.chain) {
     const { enqueueJob } = await import("../jobs/worker");
-    enqueueJob("ingest_fsq", { states, chain: true }, { dedupe: true });
+    await enqueueJob("ingest_fsq", { states, chain: true }, { dedupe: true });
   }
 }
 
 /** Row count sanity for the definition-of-done spot check. */
-export function overtureRowCount(releaseId: string): number {
-  const row = getDb()
-    .select({ n: sql<number>`count(*)` })
+export async function overtureRowCount(releaseId: string): Promise<number> {
+  const [row] = await getDb()
+    .select({ n: sql<number>`count(*)::int` })
     .from(placesOverture)
-    .where(eq(placesOverture.releaseId, releaseId))
-    .get();
+    .where(eq(placesOverture.releaseId, releaseId));
   return row?.n ?? 0;
 }

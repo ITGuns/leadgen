@@ -15,8 +15,8 @@ import { now } from "./config";
 
 export type SuppressionSets = { phones: Set<string>; domains: Set<string> };
 
-export function loadSuppressionSets(kind: "client" | "dnc"): SuppressionSets {
-  const rows = getDb().select().from(suppressions).where(eq(suppressions.kind, kind)).all();
+export async function loadSuppressionSets(kind: "client" | "dnc"): Promise<SuppressionSets> {
+  const rows = await getDb().select().from(suppressions).where(eq(suppressions.kind, kind));
   return {
     phones: new Set(rows.map((r) => r.phone).filter(Boolean) as string[]),
     domains: new Set(rows.map((r) => r.domain).filter(Boolean) as string[]),
@@ -36,12 +36,12 @@ export function isSuppressed(
 }
 
 /** Import a pasted batch of phones/domains. Returns counts; audit-logged. */
-export function importSuppressions(
+export async function importSuppressions(
   kind: "client" | "dnc",
   entries: string[],
   actor: string,
   source?: string,
-): { added: number; invalid: number; duplicates: number } {
+): Promise<{ added: number; invalid: number; duplicates: number }> {
   const db = getDb();
   let added = 0, invalid = 0, duplicates = 0;
   const ts = now().toISOString();
@@ -55,17 +55,17 @@ export function importSuppressions(
       continue;
     }
     try {
-      const res = db
+      const rows = await db
         .insert(suppressions)
         .values({ kind, phone, domain, source: source ?? "manual import", createdAt: ts })
         .onConflictDoNothing()
-        .run();
-      if (res.changes) added++;
+        .returning({ id: suppressions.id });
+      if (rows.length) added++;
       else duplicates++;
     } catch {
       invalid++;
     }
   }
-  audit(actor, "suppressions.import", { kind, added, invalid, duplicates, source });
+  await audit(actor, "suppressions.import", { kind, added, invalid, duplicates, source });
   return { added, invalid, duplicates };
 }

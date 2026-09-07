@@ -1,5 +1,18 @@
 # HANDOFF.md — operating LeadForge
 
+## Deploy (Vercel + Supabase — the chosen path, D19)
+
+One-time, in order; every step is a human step (accounts + credentials). **Do not deploy until the operator says go.**
+
+1. **Supabase** (B13/B14): create a project → note `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` (Settings → API) and the **transaction-pooler** `DATABASE_URL` (Settings → Database → Connection string → Transaction pooler, port 6543). Storage → create a **private** bucket named `exports`.
+2. **Vercel** (B15): import this repo (framework auto-detects Next). Project → Settings → Environment Variables: `MOCK_MODE` (=1 for a mock demo, =0 for real), `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET` (any long random string), `APP_SECRET` (B10), and — since Deployment Protection is the door — `AUTH_TRUST_PLATFORM=1` + `OPERATOR_EMAIL` (D20). Add data/provider keys from BLOCKERS as they exist (`OVERTURE_RELEASE`, `FSQ_RELEASE`, `HF_TOKEN`, `PAGESPEED_API_KEY`, …).
+3. Keep **Deployment Protection ON** (Vercel Authentication) — with `AUTH_TRUST_PLATFORM=1` the app trusts Vercel's door; never combine that flag with an unprotected public URL.
+4. Deploy (`vercel --prod` or git push). First request runs migrations against Supabase automatically (advisory-locked). `vercel.json` registers the minute cron → `/api/jobs/tick`; verify in Vercel → Settings → Cron Jobs. On Hobby, functions cap at 60s — set `JOB_SLICE_MS=50000`; jobs still finish via checkpoint-resume, just in more ticks.
+5. **Monthly data** never runs on Vercel (native DuckDB): from any machine, `MOCK_MODE=0 OVERTURE_RELEASE=<rel> DATABASE_URL=<pooler url> npx tsx scripts/workstation-extract.ts TX FL GA` — it streams the public parquet straight into Supabase, gate included.
+6. Backups: Supabase manages database backups (D21 — verify in its dashboard; the in-app nightly job records a skip on purpose). Exports live in the `exports` bucket.
+
+Local/Docker keeps working exactly as before with zero accounts (PGlite under `.data/pg` / the `/data` volume); the Cloudflare-tunnel path in §below remains a supported alternative.
+
 ## Daily use
 - **New campaign** → niche → *Propose categories* → confirm the chips (first run per niche; confirmed mappings auto-apply afterwards) → states → filters → caps → **Smoke test first** (200 records) → review → full run. Free runs finish in seconds.
 - **Leads** → sort by score; the drawer shows *why* (chips), the owner evidence quote, per-lead DNC, notes, tags, assignee. Bulk-set statuses from the table.
@@ -8,7 +21,7 @@
 
 ## Monthly
 1. Check the Overture releases page; bump `OVERTURE_RELEASE` in `.env`, then re-derive the category catalog from the new release: `npx tsx scripts/derive-taxonomy.ts DE NV CT` (~40s; the canonical CSV no longer exists upstream — D18). FSQ: bump `FSQ_RELEASE` (monthly `dt=` releases on the HF dataset; needs the free-account `HF_TOKEN` — B6). Each release row in Settings shows the diff vs the previous data: new / changed sites / changed phones / disappeared.
-2. Settings → Data → **Run monthly extract** (needs ≥4 GB RAM; office-machine alternative: `npx tsx scripts/workstation-extract.ts TX FL …` then ship the DB per the script header).
+2. On Vercel: run the extract from a workstation — `DATABASE_URL=<supabase pooler> npx tsx scripts/workstation-extract.ts TX FL …` (writes directly into Supabase; nothing to ship). Local/Docker: Settings → Data → **Run monthly extract** (needs ≥4 GB RAM).
 3. The **ingest gate** must pass (row-count band ±40% per state, taxonomy resolution ≤2% unresolved, GERS on every row) or the previous release stays active — the failure report is on the release row in Settings.
 4. Weekly freshness runs itself (Sun 04:00): re-checks active leads' sites at $0, tags `site-launched` / `site-died` / `not-in-latest-release`, rescores.
 

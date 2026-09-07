@@ -23,15 +23,19 @@ export type GateReport = {
   unresolvedPct: number;
 };
 
-export function runOvertureGate(releaseId: string, states: string[], rowCounts: Record<string, number>): GateReport {
+export async function runOvertureGate(
+  releaseId: string,
+  states: string[],
+  rowCounts: Record<string, number>,
+): Promise<GateReport> {
   const db = getDb();
   const failures: string[] = [];
   const warnings: string[] = [];
   const perState: GateReport["perState"] = {};
 
   // compare against the previous release, or the still-active one when re-ingesting a new release over it
-  const act = activeRelease("overture");
-  const prev = (act && act.releaseId !== releaseId ? act : undefined) ?? previousRelease("overture");
+  const act = await activeRelease("overture");
+  const prev = (act && act.releaseId !== releaseId ? act : undefined) ?? (await previousRelease("overture"));
 
   for (const state of states) {
     const rows = rowCounts[state] ?? 0;
@@ -43,30 +47,30 @@ export function runOvertureGate(releaseId: string, states: string[], rowCounts: 
       entry.previousRows = prevRows;
       entry.deltaPct = Math.round(deltaPct * 1000) / 10;
       if (Math.abs(deltaPct) > defaults.ingestBandPct) {
-        failures.push(`${state}: row count ${rows} vs previous ${prevRows} (${entry.deltaPct}%) outside ±${defaults.ingestBandPct * 100}% band`);
+        failures.push(
+          `${state}: row count ${rows} vs previous ${prevRows} (${entry.deltaPct}%) outside ±${defaults.ingestBandPct * 100}% band`,
+        );
       }
     }
     perState[state] = entry;
   }
 
-  const missingGers = db
-    .select({ n: sql<number>`count(*)` })
+  const [missingGers] = await db
+    .select({ n: sql<number>`count(*)::int` })
     .from(placesOverture)
-    .where(or(isNull(placesOverture.gersId), eq(placesOverture.gersId, "")))
-    .get();
+    .where(or(isNull(placesOverture.gersId), eq(placesOverture.gersId, "")));
   if (missingGers?.n) failures.push(`${missingGers.n} records missing a GERS id`);
 
-  const total = db
-    .select({ n: sql<number>`count(*)` })
+  const [totalRow] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(placesOverture)
+    .where(eq(placesOverture.releaseId, releaseId));
+  const total = totalRow?.n ?? 0;
+  const taxCounts = await db
+    .select({ v: placesOverture.taxonomyPrimary, n: sql<number>`count(*)::int` })
     .from(placesOverture)
     .where(eq(placesOverture.releaseId, releaseId))
-    .get()?.n ?? 0;
-  const taxCounts = db
-    .select({ v: placesOverture.taxonomyPrimary, n: sql<number>`count(*)` })
-    .from(placesOverture)
-    .where(eq(placesOverture.releaseId, releaseId))
-    .groupBy(placesOverture.taxonomyPrimary)
-    .all();
+    .groupBy(placesOverture.taxonomyPrimary);
   const unresolvedTaxonomy = taxCounts
     .filter((t) => t.v != null && !taxonomyResolves(t.v))
     .map((t) => ({ value: t.v!, count: t.n }))
@@ -78,7 +82,7 @@ export function runOvertureGate(releaseId: string, states: string[], rowCounts: 
       `${(unresolvedPct * 100).toFixed(1)}% of records carry taxonomy values missing from data/overture_taxonomy.csv (top: ${unresolvedTaxonomy
         .slice(0, 5)
         .map((t) => t.value)
-        .join(", ")}) — drop in the pinned release's taxonomy file (BLOCKERS B5)`,
+        .join(", ")}) — re-derive the catalog (scripts/derive-taxonomy.ts, D18)`,
     );
   } else if (unresolvedCount > 0) {
     warnings.push(`${unresolvedCount} records with unresolved taxonomy (≤2% tolerance)`);

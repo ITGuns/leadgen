@@ -14,7 +14,7 @@ import type { RawListing } from "../providers/types";
 
 export type TopUpMergeResult = { businessId: number; created: boolean; ownerName?: string | null };
 
-export function mergeRawListing(raw: RawListing, intentId: number): TopUpMergeResult | null {
+export async function mergeRawListing(raw: RawListing, intentId: number): Promise<TopUpMergeResult | null> {
   const db = getDb();
   if (!raw.name?.trim()) return null;
   const ts = now().toISOString();
@@ -24,15 +24,14 @@ export function mergeRawListing(raw: RawListing, intentId: number): TopUpMergeRe
   const region = (raw.region ?? "").toUpperCase().slice(0, 2) || null;
 
   let match: typeof businesses.$inferSelect | undefined;
-  if (phone) match = db.select().from(businesses).where(eq(businesses.phone, phone)).get();
-  if (!match && domain) match = db.select().from(businesses).where(eq(businesses.websiteNormalized, domain)).get();
+  if (phone) [match] = await db.select().from(businesses).where(eq(businesses.phone, phone)).limit(1);
+  if (!match && domain) [match] = await db.select().from(businesses).where(eq(businesses.websiteNormalized, domain)).limit(1);
   if (!match && normalized && raw.lat != null && raw.lng != null && region) {
-    const candidates = db
+    const candidates = await db
       .select()
       .from(businesses)
       .where(and(eq(businesses.normalizedName, normalized), eq(businesses.region, region)))
-      .limit(25)
-      .all();
+      .limit(25);
     match = candidates.find(
       (c) =>
         c.lat != null && c.lng != null &&
@@ -49,7 +48,7 @@ export function mergeRawListing(raw: RawListing, intentId: number): TopUpMergeRe
         ...(sources.conflicts ?? []),
         { field: "phone", kept: match.phone, other: phone, otherSource: "outscraper" },
       ];
-      db.update(businesses).set({ sources, updatedAt: ts }).where(eq(businesses.id, match.id)).run();
+      await db.update(businesses).set({ sources, updatedAt: ts }).where(eq(businesses.id, match.id));
       return null;
     }
     const patch: Partial<typeof businesses.$inferInsert> = { updatedAt: ts };
@@ -69,7 +68,7 @@ export function mergeRawListing(raw: RawListing, intentId: number): TopUpMergeRe
     }
     if (raw.email && !(match.emails ?? []).length) patch.emails = [raw.email];
     patch.sources = sources;
-    db.update(businesses).set(patch).where(eq(businesses.id, match.id)).run();
+    await db.update(businesses).set(patch).where(eq(businesses.id, match.id));
     return { businessId: match.id, created: false, ownerName: raw.ownerName };
   }
 
@@ -81,10 +80,10 @@ export function mergeRawListing(raw: RawListing, intentId: number): TopUpMergeRe
       : domain
         ? `dn:${domain}|${normalized}`
         : `nl:${normalized}|${(raw.city ?? "").toLowerCase()}|${region ?? ""}`;
-  const existing = db.select().from(businesses).where(eq(businesses.identityKey, identityKey)).get();
+  const [existing] = await db.select().from(businesses).where(eq(businesses.identityKey, identityKey)).limit(1);
   if (existing) return { businessId: existing.id, created: false, ownerName: raw.ownerName };
 
-  const row = db
+  const [row] = await db
     .insert(businesses)
     .values({
       identityKey,
@@ -112,7 +111,6 @@ export function mergeRawListing(raw: RawListing, intentId: number): TopUpMergeRe
       createdAt: ts,
       updatedAt: ts,
     })
-    .returning({ id: businesses.id })
-    .get();
+    .returning({ id: businesses.id });
   return { businessId: row.id, created: true, ownerName: raw.ownerName };
 }

@@ -42,13 +42,15 @@ const GOLDEN: { phrase: string; mustInclude: string[]; mustExclude?: string[] }[
 ];
 
 describe("G2 · taxonomy mapping golden set (30+)", () => {
-  beforeAll(() => freshDb());
+  beforeAll(async () => {
+    await freshDb();
+  });
 
   it("has 30+ phrases", () => expect(GOLDEN.length).toBeGreaterThanOrEqual(30));
 
   for (const g of GOLDEN) {
-    it(`"${g.phrase}"`, () => {
-      const proposal = proposeTaxonomy(g.phrase);
+    it(`"${g.phrase}"`, async () => {
+      const proposal = await proposeTaxonomy(g.phrase);
       for (const code of g.mustInclude) {
         expect(proposal.codes, `source=${proposal.source} codes=${proposal.codes.join(",")}`).toContain(code);
       }
@@ -60,10 +62,10 @@ describe("G2 · taxonomy mapping golden set (30+)", () => {
     });
   }
 
-  it("confirmed mappings auto-apply on later runs (§3.1)", () => {
-    expect(proposeTaxonomy("roofers").autoApply).toBe(false);
-    confirmTaxonomy("roofers", ["roofing", "ceiling_and_roofing_repair_and_service"], "dev@gemfieldconsulting.com");
-    const again = proposeTaxonomy("Roofers");
+  it("confirmed mappings auto-apply on later runs (§3.1)", async () => {
+    expect((await proposeTaxonomy("roofers")).autoApply).toBe(false);
+    await confirmTaxonomy("roofers", ["roofing", "ceiling_and_roofing_repair_and_service"], "dev@gemfieldconsulting.com");
+    const again = await proposeTaxonomy("Roofers");
     expect(again.autoApply).toBe(true);
     expect(again.source).toBe("confirmed");
     expect(again.codes).toEqual(["roofing", "ceiling_and_roofing_repair_and_service"]);

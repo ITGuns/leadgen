@@ -60,8 +60,8 @@ function splitCsvLine(line: string): string[] {
 /** Cities for the given states above the population floor, largest first.
  * ZIP entries in the city list refine the free local pull only (query.ts); the paid
  * fan-out queries by city name, so ZIPs are ignored here rather than zeroing it out. */
-export function fanOutCities(states: string[], opts?: { cityList?: string[] | null }): City[] {
-  const floor = getSetting<number>("cityPopulationFloor", defaults.cityPopulationFloor);
+export async function fanOutCities(states: string[], opts?: { cityList?: string[] | null }): Promise<City[]> {
+  const floor = await getSetting<number>("cityPopulationFloor", defaults.cityPopulationFloor);
   const stateSet = new Set(states.map((s) => s.toUpperCase()));
   let cities = loadCities().filter((c) => stateSet.has(c.stateId.toUpperCase()) && c.population >= floor);
   const wanted = new Set(

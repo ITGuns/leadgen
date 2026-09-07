@@ -80,11 +80,11 @@ export class MockDrive implements DrivePort {
   }
 }
 
-export function getDrive(): DrivePort {
+export async function getDrive(): Promise<DrivePort> {
   if (env.mockMode) return new MockDrive();
-  return driveConfigured() ? new RealDrive() : new MockDrive();
+  return (await driveConfigured()) ? new RealDrive() : new MockDrive();
 }
 
-export function driveAvailable(): boolean {
-  return env.mockMode || driveConfigured();
+export async function driveAvailable(): Promise<boolean> {
+  return env.mockMode || (await driveConfigured());
 }

@@ -5,24 +5,27 @@ export default defineConfig({
   testDir: "./e2e",
   timeout: 120_000,
   retries: process.env.CI ? 1 : 0,
-  workers: 1, // one shared app instance + SQLite
+  workers: 1, // one shared app instance + single-process PGlite
   reporter: process.env.CI ? "github" : "list",
   use: {
     baseURL: "http://localhost:3311",
     trace: "retain-on-failure",
   },
   webServer: {
-    command: "npm run dev -- -p 3311",
+    // State reset happens HERE, not in globalSetup: Playwright boots the web server
+    // BEFORE globalSetup runs, and deleting the PGlite data dir under a live instance
+    // corrupts it (SQLite survived that via POSIX unlink; PGlite's NODEFS does not).
+    command: "rm -rf .data/e2e-pg .data/e2e-exports .data/e2e-backups && npm run dev -- -p 3311",
     url: "http://localhost:3311/api/health",
     reuseExistingServer: false,
+    stdout: "pipe",
+    stderr: "pipe",
     timeout: 120_000,
     env: {
       MOCK_MODE: "1",
-      DATABASE_PATH: ".data/e2e.db",
+      PGLITE_DIR: ".data/e2e-pg",
       EXPORTS_DIR: ".data/e2e-exports",
       BACKUPS_DIR: ".data/e2e-backups",
-      CONFIG_DIR: ".data/e2e-config",
     },
   },
-  globalSetup: "./e2e/global-setup.ts",
 });

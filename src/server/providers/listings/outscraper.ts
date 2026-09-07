@@ -84,6 +84,6 @@ function numOf(r: Record<string, unknown>, k: string): number | null {
   return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
 
-export function outscraperKey(): string {
+export async function outscraperKey(): Promise<string> {
   return effectiveSecret("outscraper_api_key", env.outscraperApiKey());
 }

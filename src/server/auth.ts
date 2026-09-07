@@ -49,6 +49,13 @@ export function __setTestJwks(t: TestJwks | null): void {
 
 export async function getIdentity(req: Request): Promise<Identity | null> {
   if (env.mockMode) return MOCK_IDENTITY;
+  // D20 — AUTH_TRUST_PLATFORM=1: the platform in front of the app (Vercel Deployment
+  // Protection) already authenticated this request; requests carry no CF Access JWT.
+  // Explicit opt-in only — the default stays fail-closed on the Access JWT.
+  if (env.authTrustPlatform()) {
+    const email = env.operatorEmail();
+    return { email, name: email.split("@")[0] };
+  }
   const token = req.headers.get("cf-access-jwt-assertion");
   const testJwks = (globalThis as { __leadforgeTestJwks?: TestJwks | null }).__leadforgeTestJwks;
   if (testJwks) {

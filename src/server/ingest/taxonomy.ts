@@ -5,7 +5,7 @@ import { getDb } from "@/db/client";
 import { taxonomyMappings } from "@/db/schema";
 import { now } from "../config";
 
-/** Taxonomy catalog (bundled CSV, D10) + niche→taxonomy proposals (§3.1). */
+/** Taxonomy catalog (derived from the release — D18) + niche→taxonomy proposals (§3.1). */
 
 export type TaxonomyEntry = { code: string; label: string; parent: string };
 
@@ -60,12 +60,12 @@ export type TaxonomyProposal = {
 /**
  * Proposal order: confirmed mapping (auto-applies) → curated file → fuzzy token match
  * against the catalog. The optional AI assist is merged by the caller (campaigns API)
- * so this module stays offline and synchronous.
+ * so this module stays offline.
  */
-export function proposeTaxonomy(nicheRaw: string): TaxonomyProposal {
+export async function proposeTaxonomy(nicheRaw: string): Promise<TaxonomyProposal> {
   const db = getDb();
   const niche = normalizeNiche(nicheRaw);
-  const confirmed = db.select().from(taxonomyMappings).where(eq(taxonomyMappings.niche, niche)).get();
+  const [confirmed] = await db.select().from(taxonomyMappings).where(eq(taxonomyMappings.niche, niche)).limit(1);
   if (confirmed) return { codes: confirmed.taxonomySet, source: "confirmed", autoApply: true };
 
   const curated = curatedMappings();
@@ -92,19 +92,19 @@ export function proposeTaxonomy(nicheRaw: string): TaxonomyProposal {
   return { codes: best.map((b) => b.code), source: "fuzzy", autoApply: false };
 }
 
-export function confirmTaxonomy(nicheRaw: string, codes: string[], confirmedBy: string): void {
+export async function confirmTaxonomy(nicheRaw: string, codes: string[], confirmedBy: string): Promise<void> {
   const db = getDb();
   const niche = normalizeNiche(nicheRaw);
-  db.insert(taxonomyMappings)
+  await db
+    .insert(taxonomyMappings)
     .values({ niche, taxonomySet: codes, confirmedBy, confirmedAt: now().toISOString(), timesUsed: 1 })
     .onConflictDoUpdate({
       target: taxonomyMappings.niche,
       set: { taxonomySet: codes, confirmedBy, confirmedAt: now().toISOString(), timesUsed: sql`${taxonomyMappings.timesUsed} + 1` },
-    })
-    .run();
+    });
 }
 
-export function confirmedNicheCount(): number {
-  const row = getDb().select({ n: sql<number>`count(*)` }).from(taxonomyMappings).get();
+export async function confirmedNicheCount(): Promise<number> {
+  const [row] = await getDb().select({ n: sql<number>`count(*)::int` }).from(taxonomyMappings);
   return row?.n ?? 0;
 }

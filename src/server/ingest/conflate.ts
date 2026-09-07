@@ -19,9 +19,9 @@ import { flagChains } from "./chains";
 
 export async function runConflate(ctx: JobContext): Promise<void> {
   const db = getDb();
-  const overtureRel = activeRelease("overture");
+  const overtureRel = await activeRelease("overture");
   if (!overtureRel) throw new Error("no active overture release — run the extract first");
-  const fsqRel = activeRelease("fsq");
+  const fsqRel = await activeRelease("fsq");
   const ts = now().toISOString();
 
   // ---- 1) Overture rows → businesses upsert (batched, resumable) ----
@@ -36,22 +36,21 @@ export async function runConflate(ctx: JobContext): Promise<void> {
   if (!progress.fsqDone) {
     for (let offset = progress.offset ?? 0; ; offset += BATCH) {
       if (ctx.shouldStop()) throw new JobStopped();
-      const rows = db
+      const rows = await db
         .select()
         .from(placesOverture)
         .where(eq(placesOverture.releaseId, overtureRel.releaseId))
         .orderBy(placesOverture.gersId)
         .limit(BATCH)
-        .offset(offset)
-        .all();
+        .offset(offset);
       if (rows.length === 0) break;
-      db.transaction(() => {
+      await db.transaction(async (tx) => {
         for (const r of rows) {
           const phone = (r.phones ?? []).map(normalizePhone).find(Boolean) ?? null;
           const websiteRaw = (r.websites ?? [])[0] ?? null;
           const websiteNormalized = websiteRaw ? domainOf(websiteRaw) : null;
           const staticClass = classifyStatic(r.websites, r.socials);
-          const existing = db.select().from(businesses).where(eq(businesses.gersId, r.gersId)).get();
+          const [existing] = await tx.select().from(businesses).where(eq(businesses.gersId, r.gersId)).limit(1);
           const base = {
             name: r.name,
             normalizedName: normalizeName(r.name),
@@ -82,32 +81,30 @@ export async function runConflate(ctx: JobContext): Promise<void> {
               ? staticClass
               : existing.websiteClass === "unknown" ? staticClass : existing.websiteClass;
             const sources: BusinessSources = { ...(existing.sources ?? {}), overture: { release: overtureRel.releaseId } };
-            db.update(businesses).set({ ...base, websiteClass, sources }).where(eq(businesses.id, existing.id)).run();
+            await tx.update(businesses).set({ ...base, websiteClass, sources }).where(eq(businesses.id, existing.id));
           } else {
-            db.insert(businesses)
-              .values({
-                ...base,
-                gersId: r.gersId,
-                identityKey: identityKeyFor({ gersId: r.gersId, name: r.name }),
-                websiteClass: staticClass,
-                sources: { overture: { release: overtureRel.releaseId } },
-                firstSeenRelease: overtureRel.releaseId,
-                createdAt: ts,
-              })
-              .run();
+            await tx.insert(businesses).values({
+              ...base,
+              gersId: r.gersId,
+              identityKey: identityKeyFor({ gersId: r.gersId, name: r.name }),
+              websiteClass: staticClass,
+              sources: { overture: { release: overtureRel.releaseId } },
+              firstSeenRelease: overtureRel.releaseId,
+              createdAt: ts,
+            });
             stats.created++;
           }
           stats.overtureUpserts++;
         }
       });
-      ctx.checkpoint({ offset: offset + rows.length, stats });
+      await ctx.checkpoint({ offset: offset + rows.length, stats });
     }
-    ctx.checkpoint({ fsqDone: false, offset: -1, stats }); // overture pass complete
+    await ctx.checkpoint({ fsqDone: false, offset: -1, stats }); // overture pass complete
   }
 
   // ---- 2) FSQ gap-fill on matched records ----
   if (fsqRel && !progress.fsqDone) {
-    const fsqRows = db.select().from(placesFsq).where(eq(placesFsq.releaseId, fsqRel.releaseId)).all();
+    const fsqRows = await db.select().from(placesFsq).where(eq(placesFsq.releaseId, fsqRel.releaseId));
     let processed = 0;
     for (const f of fsqRows) {
       if (ctx.shouldStop()) throw new JobStopped();
@@ -118,20 +115,19 @@ export async function runConflate(ctx: JobContext): Promise<void> {
       let match: typeof businesses.$inferSelect | undefined;
       let how: "phone" | "domain" | "nameloc" | undefined;
       if (fPhone) {
-        match = db.select().from(businesses).where(eq(businesses.phone, fPhone)).get();
+        [match] = await db.select().from(businesses).where(eq(businesses.phone, fPhone)).limit(1);
         if (match) how = "phone";
       }
       if (!match && fDomain) {
-        match = db.select().from(businesses).where(eq(businesses.websiteNormalized, fDomain)).get();
+        [match] = await db.select().from(businesses).where(eq(businesses.websiteNormalized, fDomain)).limit(1);
         if (match) how = "domain";
       }
       if (!match && fName && f.lat != null && f.lng != null) {
-        const candidates = db
+        const candidates = await db
           .select()
           .from(businesses)
           .where(and(eq(businesses.normalizedName, fName), eq(businesses.region, f.region ?? "")))
-          .limit(25)
-          .all();
+          .limit(25);
         match = candidates.find(
           (c) =>
             c.lat != null && c.lng != null &&
@@ -150,7 +146,7 @@ export async function runConflate(ctx: JobContext): Promise<void> {
             ...(sources.conflicts ?? []),
             { field: "phone", kept: match.phone, other: fPhone, otherSource: "fsq" },
           ];
-          db.update(businesses).set({ sources, updatedAt: ts }).where(eq(businesses.id, match.id)).run();
+          await db.update(businesses).set({ sources, updatedAt: ts }).where(eq(businesses.id, match.id));
         } else {
           const patch: Partial<typeof businesses.$inferInsert> = { updatedAt: ts };
           const sources: BusinessSources = { ...(match.sources ?? {}), fsq: { release: fsqRel.releaseId, fsqId: f.fsqId } };
@@ -176,30 +172,29 @@ export async function runConflate(ctx: JobContext): Promise<void> {
             stats.fsqFilledEmails++;
           }
           patch.sources = sources;
-          db.update(businesses).set(patch).where(eq(businesses.id, match.id)).run();
-          db.update(placesFsq).set({ matchedGersId: match.gersId }).where(eq(placesFsq.fsqId, f.fsqId)).run();
+          await db.update(businesses).set(patch).where(eq(businesses.id, match.id));
+          await db.update(placesFsq).set({ matchedGersId: match.gersId }).where(eq(placesFsq.fsqId, f.fsqId));
           if (how === "phone") stats.fsqMatchedPhone++;
           else if (how === "domain") stats.fsqMatchedDomain++;
           else stats.fsqMatchedNameLoc++;
         }
       }
       processed++;
-      if (processed % 200 === 0) ctx.checkpoint({ stats });
+      if (processed % 200 === 0) await ctx.checkpoint({ stats });
     }
   }
 
   // ---- 3) chain flagging (§4.2) ----
-  stats.chainsFlagged = flagChains();
+  stats.chainsFlagged = await flagChains();
 
   // ---- 4) release diff summary (§4.0): new / changed / disappeared, stored on the
   // active release row and rendered in Settings; disappeared records feed §4.5 ----
-  stats.disappeared =
-    db
-      .select({ n: sql<number>`count(*)` })
-      .from(businesses)
-      .where(sql`${businesses.gersId} IS NOT NULL AND coalesce(${businesses.lastSeenRelease}, '') != ${overtureRel.releaseId}`)
-      .get()?.n ?? 0;
-  const relRow = db.select().from(releases).where(eq(releases.id, overtureRel.id)).get();
+  const [disappearedRow] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(businesses)
+    .where(sql`${businesses.gersId} IS NOT NULL AND coalesce(${businesses.lastSeenRelease}, '') != ${overtureRel.releaseId}`);
+  stats.disappeared = disappearedRow?.n ?? 0;
+  const [relRow] = await db.select().from(releases).where(eq(releases.id, overtureRel.id)).limit(1);
   const gateReport = {
     ...((relRow?.gateReport as Record<string, unknown> | null) ?? {}),
     diff: {
@@ -210,9 +205,9 @@ export async function runConflate(ctx: JobContext): Promise<void> {
       computedAt: now().toISOString(),
     },
   };
-  db.update(releases).set({ gateReport }).where(eq(releases.id, overtureRel.id)).run();
+  await db.update(releases).set({ gateReport }).where(eq(releases.id, overtureRel.id));
 
-  ctx.checkpoint({ fsqDone: true, stats });
+  await ctx.checkpoint({ fsqDone: true, stats });
 }
 
 export type ConflateStats = {
@@ -233,13 +228,12 @@ export type ConflateStats = {
 };
 
 /** Businesses that disappeared from the active release (freshness §4.5). */
-export function disappearedBusinessIds(): number[] {
-  const rel = activeRelease("overture");
+export async function disappearedBusinessIds(): Promise<number[]> {
+  const rel = await activeRelease("overture");
   if (!rel) return [];
-  return getDb()
+  const rows = await getDb()
     .select({ id: businesses.id })
     .from(businesses)
-    .where(and(sql`${businesses.lastSeenRelease} != ${rel.releaseId}`, inArray(businesses.operatingStatus, ["open", "unknown"])))
-    .all()
-    .map((r) => r.id);
+    .where(and(sql`${businesses.lastSeenRelease} != ${rel.releaseId}`, inArray(businesses.operatingStatus, ["open", "unknown"])));
+  return rows.map((r) => r.id);
 }

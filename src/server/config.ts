@@ -23,10 +23,11 @@ export const env = {
     // Default to mock when nothing is configured — the app must always boot.
     return bool(process.env.MOCK_MODE, true);
   },
-  databasePath: () => process.env.DATABASE_PATH || path.join(cwd, ".data", "leadforge.db"),
-  exportsDir: () => process.env.EXPORTS_DIR || path.join(cwd, ".data", "exports"),
-  backupsDir: () => process.env.BACKUPS_DIR || path.join(cwd, ".data", "backups"),
-  configDir: () => process.env.CONFIG_DIR || path.join(cwd, ".data", "config"),
+  /** D19: Supabase/Postgres connection string; empty = local PGlite under pgliteDir */
+  databaseUrl: () => process.env.DATABASE_URL || "",
+  pgliteDir: () => process.env.PGLITE_DIR || path.join(cwd, ".data", "pg"),
+  exportsDir: () => process.env.EXPORTS_DIR || (process.env.VERCEL ? "/tmp/leadforge-exports" : path.join(cwd, ".data", "exports")),
+  backupsDir: () => process.env.BACKUPS_DIR || (process.env.VERCEL ? "/tmp/leadforge-backups" : path.join(cwd, ".data", "backups")),
   appSecret: () => process.env.APP_SECRET || "leadforge-dev-secret-not-for-production",
 
   overtureRelease: () => process.env.OVERTURE_RELEASE || "",
@@ -50,6 +51,16 @@ export const env = {
 
   monthlySpendCeilingUSD: () => num(process.env.MONTHLY_SPEND_CEILING_USD, 0),
   appUrl: () => process.env.APP_URL || "http://localhost:3000",
+
+  // D19/D20 — Vercel + Supabase deployment
+  supabaseUrl: () => (process.env.SUPABASE_URL || "").replace(/\/$/, ""),
+  supabaseServiceKey: () => process.env.SUPABASE_SERVICE_ROLE_KEY || "",
+  cronSecret: () => process.env.CRON_SECRET || "",
+  /** Explicit, documented weakening switch (D20): trust the platform's own door
+   * (Vercel Deployment Protection / a fronting proxy) instead of CF Access JWTs. */
+  authTrustPlatform: () => bool(process.env.AUTH_TRUST_PLATFORM, false),
+  operatorEmail: () => process.env.OPERATOR_EMAIL || "operator@gemfieldconsulting.com",
+  jobSliceMs: () => num(process.env.JOB_SLICE_MS, 280_000),
 };
 
 /** Static operational defaults; overridable via app_settings (settings.ts). */
@@ -76,9 +87,19 @@ export const defaults = {
 export const MOCK_IDENTITY = { email: "dev@gemfieldconsulting.com", name: "Dev User" };
 
 export function ensureDirs(): void {
-  for (const d of [path.dirname(env.databasePath()), env.exportsDir(), env.backupsDir(), env.configDir()]) {
-    fs.mkdirSync(d, { recursive: true });
+  const dirs = [env.exportsDir(), env.backupsDir()];
+  if (!env.databaseUrl()) dirs.push(env.pgliteDir());
+  for (const d of dirs) {
+    try {
+      fs.mkdirSync(d, { recursive: true });
+    } catch {
+      // serverless filesystems are read-only outside /tmp — harmless there
+    }
   }
+}
+
+export function isServerless(): boolean {
+  return !!process.env.VERCEL;
 }
 
 /** Frozen clock in mock mode so fixtures, caches and tests are deterministic. */

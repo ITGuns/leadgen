@@ -77,8 +77,9 @@ e2e/               Playwright mock-mode campaign E2E
 
 ## A4. Job & scheduler model
 
-- `jobs` table is the source of truth; worker claims `pending` jobs transactionally (single process — SQLite serializes), runs handlers from `registry.ts` under `p-queue` (default concurrency 2), heartbeats, checkpoints `progress` JSON after every batch.
-- Crash recovery: on boot every `running` job reverts to `pending`; handlers are written to resume from their checkpoint (stage + cursor), and every provider effect is guarded by an intent row, so **resume never double-bills** (§4.3 of the build guide).
+- `jobs` table is the source of truth; worker claims `pending` jobs with an atomic conditional UPDATE, runs handlers from `registry.ts` under `p-queue` (default concurrency 2), heartbeats, checkpoints `progress` JSON after every batch.
+- **Serverless (D19):** on Vercel no resident worker runs; Vercel Cron calls `/api/jobs/tick` every minute, which runs a time-boxed `runSlice` over the same table (handlers get a `deadline`; a deadline stop requeues without burning an attempt). Enqueue routes kick a short `after()` slice for snappy starts. Local/Docker keeps the interval worker.
+- Crash recovery: on boot every `running` job reverts to `pending` (serverless slices recover only stale-heartbeat orphans); handlers are written to resume from their checkpoint (stage + cursor), and every provider effect is guarded by an intent row, so **resume never double-bills** (§4.3 of the build guide).
 - Pause/cancel: flags on the campaign row; stage loops check between batches and exit cleanly; resume re-enqueues.
 - Cron: in-process ticker (1 min) fires `backup` (daily 03:15) and `freshness` (weekly Sun 04:00) by inserting jobs — so scheduled work is visible/resumable like everything else.
 - Global scheduler singleton: PageSpeed quota counter (per-day row, default limit 25,000 with a 500 safety margin), website-fetch limiter (≤2/domain, ≤10 global), round-robin dispenser keyed by campaign so two simultaneous runs share fairly.

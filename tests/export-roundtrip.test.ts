@@ -25,11 +25,11 @@ describe("G7 · export round-trip", () => {
   const w = new Worker(1, 10);
 
   beforeAll(async () => {
-    freshDb();
+    await freshDb();
     registerAllHandlers();
-    enqueueJob("ingest_overture", { states: ["TX"], chain: true }, { maxAttempts: 1 });
+    await enqueueJob("ingest_overture", { states: ["TX"], chain: true }, { maxAttempts: 1 });
     await w.drain(120_000);
-    const c = createCampaign(
+    const c = await createCampaign(
       {
         name: "export test", niche: "roofers", confirmedTaxonomy: ["roofing", "ceiling_and_roofing_repair_and_service"],
         states: ["TX"], filters: defaultFilters(), caps: { maxRecords: 5000, budgetCapUSD: 0 },
@@ -38,26 +38,24 @@ describe("G7 · export round-trip", () => {
       "t@gemfieldconsulting.com",
     );
     campaignId = c.id;
-    startCampaign(campaignId, "t@gemfieldconsulting.com");
+    await startCampaign(campaignId, "t@gemfieldconsulting.com");
     await w.drain(180_000);
 
     // craft exclusions: one dnc status, one not_interested, one dnc-list suppression by phone
-    const rows = getDb()
+    const rows = await getDb()
       .select({ lead: leads, business: businesses })
       .from(campaignLeads)
       .innerJoin(leads, eq(campaignLeads.leadId, leads.id))
       .innerJoin(businesses, eq(leads.businessId, businesses.id))
-      .where(eq(campaignLeads.campaignId, campaignId))
-      .all();
+      .where(eq(campaignLeads.campaignId, campaignId));
     expect(rows.length).toBeGreaterThan(10);
     const [a, b] = rows;
     const withPhone = rows.find((r) => r.business.phone && r.lead.id !== a.lead.id && r.lead.id !== b.lead.id)!;
-    getDb().update(leads).set({ status: "dnc" }).where(eq(leads.id, a.lead.id)).run();
-    getDb().update(leads).set({ status: "not_interested" }).where(eq(leads.id, b.lead.id)).run();
-    getDb()
+    await getDb().update(leads).set({ status: "dnc" }).where(eq(leads.id, a.lead.id));
+    await getDb().update(leads).set({ status: "not_interested" }).where(eq(leads.id, b.lead.id));
+    await getDb()
       .insert(suppressions)
-      .values({ kind: "dnc", phone: withPhone.business.phone!, createdAt: new Date().toISOString(), source: "scrub" })
-      .run();
+      .values({ kind: "dnc", phone: withPhone.business.phone!, createdAt: new Date().toISOString(), source: "scrub" });
     dncLeadId = a.lead.id;
     notInterestedId = b.lead.id;
     dncLeadName = a.business.name;
@@ -66,16 +64,16 @@ describe("G7 · export round-trip", () => {
   }, 300_000);
 
   async function runExportJob(format: "xlsx" | "csv", includeExcluded = false): Promise<typeof exportsTable.$inferSelect> {
-    const record = createExport(
+    const record = await createExport(
       { campaignId, columns: DEFAULT_COLUMNS, includeExcluded },
       format,
       "t@gemfieldconsulting.com",
     );
     await w.drain(120_000);
-    const done = getDb().select().from(exportsTable).where(eq(exportsTable.id, record.id)).get()!;
-    expect(done.status).toBe("completed");
-    expect(done.path && fs.existsSync(done.path)).toBeTruthy();
-    return done;
+    const [done] = await getDb().select().from(exportsTable).where(eq(exportsTable.id, record.id)).limit(1);
+    expect(done!.status).toBe("completed");
+    expect(done!.path && fs.existsSync(done!.path)).toBeTruthy();
+    return done!;
   }
 
   it("XLSX round-trips identically and excludes DNC/not-interested/suppressed", async () => {
@@ -86,13 +84,14 @@ describe("G7 · export round-trip", () => {
     expect(sheet).toBeTruthy();
 
     // expected rows: campaign leads minus excluded statuses minus dnc-list matches
-    const expected = getDb()
-      .select({ lead: leads, business: businesses })
-      .from(campaignLeads)
-      .innerJoin(leads, eq(campaignLeads.leadId, leads.id))
-      .innerJoin(businesses, eq(leads.businessId, businesses.id))
-      .where(and(eq(campaignLeads.campaignId, campaignId), sql`${leads.status} NOT IN ('dnc','not_interested')`))
-      .all()
+    const expected = (
+      await getDb()
+        .select({ lead: leads, business: businesses })
+        .from(campaignLeads)
+        .innerJoin(leads, eq(campaignLeads.leadId, leads.id))
+        .innerJoin(businesses, eq(leads.businessId, businesses.id))
+        .where(and(eq(campaignLeads.campaignId, campaignId), sql`${leads.status} NOT IN ('dnc','not_interested')`))
+    )
       .filter((r) => r.business.phone !== suppressedPhone)
       .sort((x, y) => (y.lead.score ?? -1) - (x.lead.score ?? -1) || x.lead.id - y.lead.id);
 
@@ -134,7 +133,7 @@ describe("G7 · export round-trip", () => {
     expect(metaText).toContain("CC-BY-4.0");
 
     // audit trail: who, when, how many
-    const auditRow = getDb().select().from(auditLog).orderBy(desc(auditLog.id)).all().find((a) => a.action === "export.completed");
+    const auditRow = (await getDb().select().from(auditLog).orderBy(desc(auditLog.id))).find((a) => a.action === "export.completed");
     expect(auditRow).toBeTruthy();
     expect(auditRow!.actor).toBe("t@gemfieldconsulting.com");
     expect((auditRow!.detail as { rowCount: number }).rowCount).toBe(expected.length);
@@ -165,7 +164,7 @@ describe("G7 · export round-trip", () => {
     expect(names).toContain(dncLeadName);
     expect(names).toContain(notInterestedName);
     expect(phones).not.toContain(suppressedPhone); // the DNC LIST never exports
-    const override = getDb().select().from(auditLog).all().find((a) => a.action === "export.include_excluded_override");
+    const override = (await getDb().select().from(auditLog)).find((a) => a.action === "export.include_excluded_override");
     expect(override).toBeTruthy();
   }, 300_000);
 });
@@ -173,18 +172,18 @@ describe("G7 · export round-trip", () => {
 describe("G7 · Drive push with per-campaign subfolder (mock, §3.5)", () => {
   it("creates the subfolder under drive-mock and links the uploaded file", async () => {
     // reuses the campaign from the suite above via a fresh export
-    const record = createExport(
+    const record = await createExport(
       { campaignId: 1, columns: DEFAULT_COLUMNS, includeExcluded: false, toDrive: true, driveSubfolder: "Roofers TX" },
       "xlsx",
       "t@gemfieldconsulting.com",
     );
     const w = new Worker(1, 10);
     await w.drain(120_000);
-    const done = getDb().select().from(exportsTable).where(eq(exportsTable.id, record.id)).get()!;
-    expect(done.status).toBe("completed");
-    expect(done.driveLink).toBeTruthy();
-    expect(done.driveLink).toContain(path.join("drive-mock", "Roofers TX"));
-    const localCopy = done.driveLink!.replace("file://", "");
+    const [done] = await getDb().select().from(exportsTable).where(eq(exportsTable.id, record.id)).limit(1);
+    expect(done!.status).toBe("completed");
+    expect(done!.driveLink).toBeTruthy();
+    expect(done!.driveLink).toContain(path.join("drive-mock", "Roofers TX"));
+    const localCopy = done!.driveLink!.replace("file://", "");
     expect(fs.existsSync(localCopy)).toBe(true);
     expect(localCopy.startsWith(path.join(env.exportsDir(), "drive-mock", "Roofers TX"))).toBe(true);
   }, 200_000);

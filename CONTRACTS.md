@@ -85,6 +85,8 @@ Fetcher rules: ≤2 concurrent per domain, ≤10 global, 8 s timeout, honors rob
 
 Every stage: batch loop → checkpoint job progress → honor pause/cancel between batches. Per-stage error counters with retry: `retry_errors` (completed/failed campaigns) clears the stage failure markers — website-check `error:'other'` (dead/timeout are classifications, not errors) and PageSpeed `-1` — resets the counters and re-enqueues; the idempotent stages redo exactly the cleared work. A crashed run resumes at its checkpoint without re-billing (intents).
 
+Serverless addendum (D19): stages must respect `ctx.shouldStop()` between batches — on Vercel it also fires at the slice deadline, and the job resumes from its checkpoint on the next tick without losing an attempt.
+
 ## C8. Score rubric format (`config/score-rubric.json`)
 
 ```jsonc

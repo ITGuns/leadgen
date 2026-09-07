@@ -15,7 +15,7 @@ const AUD = "test-aud-tag-1234";
 let sign: (patch?: Record<string, unknown>) => Promise<string>;
 
 beforeAll(async () => {
-  freshDb();
+  await freshDb();
   const { publicKey, privateKey } = await generateKeyPair("RS256");
   const jwk = await exportJWK(publicKey);
   jwk.kid = "test-key";

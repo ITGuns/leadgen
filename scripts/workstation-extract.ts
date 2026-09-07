@@ -1,20 +1,19 @@
 /**
- * §4.0 alternative: run the monthly Overture/FSQ extract on an office machine when the
- * VPS is under 4 GB RAM, then ship the resulting SQLite file to the server.
+ * §4.0 / D19 — the monthly Overture/FSQ extract NEVER runs on Vercel (native DuckDB).
+ * Run it from any workstation, pointed straight at the shared database:
  *
- * Usage:
- *   MOCK_MODE=0 OVERTURE_RELEASE=2026-08-19.0 DATABASE_PATH=./out/leadforge.db \
+ *   MOCK_MODE=0 OVERTURE_RELEASE=2026-08-19.0 \
+ *     DATABASE_URL='postgresql://…pooler.supabase.com:5432/postgres' \
  *     npx tsx scripts/workstation-extract.ts TX FL GA
  *
- * Then, on the server (app stopped so WAL is settled):
- *   scp ./out/leadforge.db server:/tmp/ && ssh server \
- *     'docker compose stop leadforge && cp /tmp/leadforge.db /var/lib/docker/volumes/…/leadforge.db && docker compose start leadforge'
- * (or simply re-run this script pointing DATABASE_PATH at the mounted volume)
+ * The extract streams the public parquet through DuckDB and writes conflated rows
+ * directly into Supabase — nothing to copy afterwards. Without DATABASE_URL it fills
+ * the local PGlite dir (.data/pg) for local/Docker runs instead.
  */
 import { registerAllHandlers } from "@/server/jobs/handlers";
 import { Worker, enqueueJob } from "@/server/jobs/worker";
 import { ensureDirs } from "@/server/config";
-import { getDb } from "@/db/client";
+import { getDb, initDb } from "@/db/client";
 import { businesses, releases } from "@/db/schema";
 import { sql } from "drizzle-orm";
 
@@ -26,16 +25,17 @@ if (!states.length) {
 
 (async () => {
   ensureDirs();
+  await initDb();
   registerAllHandlers();
   const worker = new Worker(1, 250);
   console.log(`extracting ${states.join(", ")} — this streams the public parquet; expect minutes per state`);
-  enqueueJob("ingest_overture", { states, chain: true }, { maxAttempts: 1 });
+  await enqueueJob("ingest_overture", { states, chain: true }, { maxAttempts: 1 });
   await worker.drain(6 * 3600_000);
-  const rel = getDb().select().from(releases).all();
-  const count = getDb().select({ n: sql<number>`count(*)` }).from(businesses).get()!.n;
+  const rel = await getDb().select().from(releases);
+  const [countRow] = await getDb().select({ n: sql<number>`count(*)::int` }).from(businesses);
   console.log("releases:", rel.map((r) => `${r.source}:${r.releaseId}:${r.status}`).join(" · "));
-  console.log(`businesses conflated: ${count}`);
-  console.log(`done → ${process.env.DATABASE_PATH ?? "./.data/leadforge.db"}`);
+  console.log(`businesses conflated: ${countRow?.n ?? 0}`);
+  console.log(`done → ${process.env.DATABASE_URL ? "shared database (Supabase)" : "local PGlite"}`);
   process.exit(0);
 })().catch((e) => {
   console.error(e);

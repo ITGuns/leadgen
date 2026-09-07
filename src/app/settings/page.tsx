@@ -98,7 +98,7 @@ function SettingsInner() {
       {msg && <div className="rounded-md border border-emerald-800 bg-emerald-950/60 px-3 py-2 text-sm text-emerald-300">{msg}</div>}
 
       <section className="card space-y-3">
-        <h2 className="text-sm font-semibold text-zinc-300">API keys <span className="font-normal text-zinc-500">— stored encrypted on the volume (AES-256-GCM), never in the DB or git</span></h2>
+        <h2 className="text-sm font-semibold text-zinc-300">API keys <span className="font-normal text-zinc-500">— stored encrypted (AES-256-GCM under APP_SECRET, D8) — never in plaintext or git</span></h2>
         {KEY_FIELDS.map((f) => (
           <div key={f.k} className="flex items-center gap-2 text-sm">
             <span className="w-64">{f.label} {data.keys[f.k] ? <span className="text-emerald-400">✓ configured</span> : <span className="text-zinc-500">({f.blocker})</span>}</span>
