@@ -16,29 +16,45 @@ import { monthSpendUSD, monthlyCeilingUSD } from "@/server/budget";
 export const GET = withAuth(async () => {
   const compliance = JSON.parse(fs.readFileSync(path.join(process.cwd(), "config", "compliance.json"), "utf8"));
   const attribution = fs.readFileSync(path.join(process.cwd(), "data", "ATTRIBUTION.md"), "utf8");
+  // ~18 independent reads — one round trip of wall time, not eighteen (remote DB)
+  const [
+    pagespeed, anthropic, outscraper, gClientId, gClientSecret, hf, alertWebhook,
+    driveOk, driveFolder,
+    ceiling, spend, psQuota, psRemaining, cityFloor, jobConc, fetchG, fetchPD, backupAt, backupFile,
+  ] = await Promise.all([
+    pagespeedKey(), anthropicKey(), outscraperKey(), googleClientId(), googleClientSecret(),
+    effectiveSecret("hf_token", env.hfToken()), effectiveSecret("alert_webhook_url", ""),
+    driveConfigured(), driveFolderId(),
+    monthlyCeilingUSD(), monthSpendUSD(),
+    getSetting("pagespeedDailyQuota", defaults.pagespeedDailyQuota), pagespeedQuotaRemaining(),
+    getSetting("cityPopulationFloor", defaults.cityPopulationFloor),
+    getSetting("jobConcurrency", defaults.jobConcurrency),
+    getSetting("fetchGlobal", defaults.fetchGlobal), getSetting("fetchPerDomain", defaults.fetchPerDomain),
+    getSetting<string | null>("lastBackupAt", null), getSetting<string | null>("lastBackupFile", null),
+  ]);
   return Response.json({
     mockMode: env.mockMode,
     keys: {
-      pagespeed: !!(await pagespeedKey()),
-      anthropic: !!(await anthropicKey()),
-      outscraper: !!(await outscraperKey()),
-      googleClientId: !!(await googleClientId()),
-      googleClientSecret: !!(await googleClientSecret()),
-      hf: !!(await effectiveSecret("hf_token", env.hfToken())),
-      alertWebhook: !!(await effectiveSecret("alert_webhook_url", "")),
+      pagespeed: !!pagespeed,
+      anthropic: !!anthropic,
+      outscraper: !!outscraper,
+      googleClientId: !!gClientId,
+      googleClientSecret: !!gClientSecret,
+      hf: !!hf,
+      alertWebhook: !!alertWebhook,
     },
-    drive: { connected: await driveConfigured(), folderId: await driveFolderId() },
+    drive: { connected: driveOk, folderId: driveFolder },
     ops: {
-      monthlySpendCeilingUSD: await monthlyCeilingUSD(),
-      monthSpendUSD: await monthSpendUSD(),
-      pagespeedDailyQuota: await getSetting("pagespeedDailyQuota", defaults.pagespeedDailyQuota),
-      pagespeedQuotaRemaining: await pagespeedQuotaRemaining(),
-      cityPopulationFloor: await getSetting("cityPopulationFloor", defaults.cityPopulationFloor),
-      jobConcurrency: await getSetting("jobConcurrency", defaults.jobConcurrency),
-      fetchGlobal: await getSetting("fetchGlobal", defaults.fetchGlobal),
-      fetchPerDomain: await getSetting("fetchPerDomain", defaults.fetchPerDomain),
-      lastBackupAt: await getSetting<string | null>("lastBackupAt", null),
-      lastBackupFile: await getSetting<string | null>("lastBackupFile", null),
+      monthlySpendCeilingUSD: ceiling,
+      monthSpendUSD: spend,
+      pagespeedDailyQuota: psQuota,
+      pagespeedQuotaRemaining: psRemaining,
+      cityPopulationFloor: cityFloor,
+      jobConcurrency: jobConc,
+      fetchGlobal: fetchG,
+      fetchPerDomain: fetchPD,
+      lastBackupAt: backupAt,
+      lastBackupFile: backupFile,
     },
     env: {
       overtureRelease: env.overtureRelease() || "(unset — mock uses bundled fixture)",

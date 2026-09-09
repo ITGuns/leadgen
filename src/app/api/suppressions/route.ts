@@ -1,13 +1,16 @@
-import { desc } from "drizzle-orm";
+import { desc, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { suppressions } from "@/db/schema";
 import { withAuth } from "@/server/auth";
 import { importSuppressions } from "@/server/suppression";
 
 export const GET = withAuth(async () => {
-  const rows = await getDb().select().from(suppressions).orderBy(desc(suppressions.id)).limit(500);
+  const [rows, countRows] = await Promise.all([
+    getDb().select().from(suppressions).orderBy(desc(suppressions.id)).limit(500),
+    getDb().select({ kind: suppressions.kind, n: sql<number>`count(*)::int` }).from(suppressions).groupBy(suppressions.kind),
+  ]);
   const counts = { client: 0, dnc: 0 };
-  for (const r of await getDb().select().from(suppressions)) counts[r.kind as "client" | "dnc"]++;
+  for (const r of countRows) counts[r.kind as "client" | "dnc"] = r.n;
   return Response.json({ rows, counts });
 });
 

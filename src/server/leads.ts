@@ -61,24 +61,25 @@ export async function listLeads(f: LeadFilters) {
   const pageSize = Math.min(f.pageSize ?? 50, 200);
   const page = Math.max(f.page ?? 1, 1);
 
-  const [totalRow] = await db
-    .select({ n: sql<number>`count(*)::int` })
-    .from(leads)
-    .innerJoin(businesses, eq(leads.businessId, businesses.id))
-    .where(where);
+  // one round trip's worth of wall time, not four — latency matters on a remote DB
+  const [[totalRow], rows, dnc, client] = await Promise.all([
+    db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(leads)
+      .innerJoin(businesses, eq(leads.businessId, businesses.id))
+      .where(where),
+    db
+      .select({ lead: leads, business: businesses })
+      .from(leads)
+      .innerJoin(businesses, eq(leads.businessId, businesses.id))
+      .where(where)
+      .orderBy(order)
+      .limit(pageSize)
+      .offset((page - 1) * pageSize),
+    loadSuppressionSets("dnc"),
+    loadSuppressionSets("client"),
+  ]);
   const total = totalRow?.n ?? 0;
-
-  const rows = await db
-    .select({ lead: leads, business: businesses })
-    .from(leads)
-    .innerJoin(businesses, eq(leads.businessId, businesses.id))
-    .where(where)
-    .orderBy(order)
-    .limit(pageSize)
-    .offset((page - 1) * pageSize);
-
-  const dnc = await loadSuppressionSets("dnc");
-  const client = await loadSuppressionSets("client");
   return {
     total,
     page,
@@ -101,14 +102,16 @@ export async function getLeadDetail(id: number) {
     .where(eq(leads.id, id))
     .limit(1);
   if (!row) return null;
-  const leadNotes = await db.select().from(notes).where(eq(notes.leadId, id)).orderBy(desc(notes.id));
-  const memberships = await db
-    .select({ id: campaigns.id, name: campaigns.name, addedAt: campaignLeads.addedAt, status: campaigns.status })
-    .from(campaignLeads)
-    .innerJoin(campaigns, eq(campaignLeads.campaignId, campaigns.id))
-    .where(eq(campaignLeads.leadId, id));
-  const dnc = await loadSuppressionSets("dnc");
-  const client = await loadSuppressionSets("client");
+  const [leadNotes, memberships, dnc, client] = await Promise.all([
+    db.select().from(notes).where(eq(notes.leadId, id)).orderBy(desc(notes.id)),
+    db
+      .select({ id: campaigns.id, name: campaigns.name, addedAt: campaignLeads.addedAt, status: campaigns.status })
+      .from(campaignLeads)
+      .innerJoin(campaigns, eq(campaignLeads.campaignId, campaigns.id))
+      .where(eq(campaignLeads.leadId, id)),
+    loadSuppressionSets("dnc"),
+    loadSuppressionSets("client"),
+  ]);
   return {
     ...row,
     notes: leadNotes,
@@ -163,11 +166,13 @@ export async function addNote(leadId: number, author: string, body: string) {
 export async function dashboardStats() {
   const db = getDb();
   const count = async (q: Promise<{ n: number }[]>) => (await q)[0]?.n ?? 0;
-  const businessCount = await count(db.select({ n: sql<number>`count(*)::int` }).from(businesses));
-  const leadCount = await count(db.select({ n: sql<number>`count(*)::int` }).from(leads));
-  const byStatus = await db.select({ status: leads.status, n: sql<number>`count(*)::int` }).from(leads).groupBy(leads.status);
-  const hotLeads = await count(db.select({ n: sql<number>`count(*)::int` }).from(leads).where(sql`score >= 80`));
-  const ownersFound = await count(db.select({ n: sql<number>`count(*)::int` }).from(leads).where(sql`owner_name IS NOT NULL`));
-  const recentAudit = await db.select().from(auditLog).orderBy(desc(auditLog.id)).limit(8);
+  const [businessCount, leadCount, byStatus, hotLeads, ownersFound, recentAudit] = await Promise.all([
+    count(db.select({ n: sql<number>`count(*)::int` }).from(businesses)),
+    count(db.select({ n: sql<number>`count(*)::int` }).from(leads)),
+    db.select({ status: leads.status, n: sql<number>`count(*)::int` }).from(leads).groupBy(leads.status),
+    count(db.select({ n: sql<number>`count(*)::int` }).from(leads).where(sql`score >= 80`)),
+    count(db.select({ n: sql<number>`count(*)::int` }).from(leads).where(sql`owner_name IS NOT NULL`)),
+    db.select().from(auditLog).orderBy(desc(auditLog.id)).limit(8),
+  ]);
   return { businessCount, leadCount, byStatus, hotLeads, ownersFound, recentAudit };
 }

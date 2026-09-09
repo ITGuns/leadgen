@@ -1,38 +1,135 @@
 @import "tailwindcss";
 
+/* LeadForge design system — professional dark ops console.
+   Layers: bg (page) → panel (cards/sidebar) → raised (inputs, hover)
+   Accent: emerald, reserved for primary actions, live states, and the brand.
+   Everything interactive gets a visible focus ring and a motion-safe transition. */
+
+@theme {
+  --color-bg: #09090b;
+  --color-panel: #0e0e11;
+  --color-raised: #16161a;
+  --color-line: #232329;
+  --color-line-strong: #2e2e36;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
 :root {
   color-scheme: dark;
 }
 
 body {
-  @apply bg-zinc-950 text-zinc-200 antialiased;
+  @apply bg-bg text-zinc-200 antialiased;
+  font-feature-settings: "cv11", "ss01";
+  text-rendering: optimizeLegibility;
 }
 
 ::selection {
-  @apply bg-emerald-500/30;
+  @apply bg-emerald-500/25 text-white;
 }
 
+/* slim dark scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2e2e36 transparent;
+}
+*::-webkit-scrollbar { height: 8px; width: 8px; }
+*::-webkit-scrollbar-thumb { background: #2e2e36; border-radius: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .card, .btn, .chip, .input, .nav-item, tr { transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease; }
+}
+
+/* ---------- surfaces ---------- */
+
 .card {
-  @apply rounded-xl border border-zinc-800 bg-zinc-900/60 p-4;
+  @apply rounded-xl border border-line bg-panel p-5;
+  box-shadow: 0 1px 0 0 rgb(255 255 255 / 0.03) inset, 0 8px 24px -16px rgb(0 0 0 / 0.8);
 }
+.card-tight { @apply p-0; }
+.card-header { @apply flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-3.5; }
+.card-title { @apply text-sm font-semibold text-zinc-100; }
+.card-sub { @apply text-xs text-zinc-500; }
+
+.page-title { @apply text-xl font-semibold tracking-tight text-white sm:text-2xl; }
+.page-sub { @apply mt-1 text-sm text-zinc-500; }
+.section-label { @apply text-[11px] font-semibold uppercase tracking-wider text-zinc-500; }
+
+/* stat tile */
+.stat { @apply rounded-xl border border-line bg-panel p-5; box-shadow: 0 1px 0 0 rgb(255 255 255 / 0.03) inset; }
+.stat-label { @apply text-[11px] font-semibold uppercase tracking-wider text-zinc-500; }
+.stat-value { @apply mt-2 text-2xl font-semibold tracking-tight text-white tabular-nums sm:text-3xl; }
+.stat-foot { @apply mt-2 text-xs leading-5 text-zinc-500; }
+
+/* ---------- controls ---------- */
+
 .input {
-  @apply rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-sm text-zinc-100 outline-none placeholder:text-zinc-500 focus:border-emerald-600;
+  @apply w-auto rounded-lg border border-line-strong bg-raised px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600;
 }
+.input:focus-visible { @apply border-emerald-600/70 ring-2 ring-emerald-500/20; }
+select.input { @apply cursor-pointer pr-8; }
+
 .btn {
-  @apply inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm font-medium text-zinc-100 hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40;
+  @apply inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-line-strong bg-raised px-3.5 py-2 text-sm font-medium text-zinc-100 hover:border-zinc-600 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40;
 }
+.btn:focus-visible { @apply outline-none ring-2 ring-emerald-500/40; }
 .btn-primary {
-  @apply border-emerald-700 bg-emerald-700 hover:bg-emerald-600;
+  @apply border-emerald-600 bg-emerald-600 text-white hover:border-emerald-500 hover:bg-emerald-500;
+  box-shadow: 0 1px 0 0 rgb(255 255 255 / 0.15) inset, 0 8px 20px -12px rgb(16 185 129 / 0.5);
 }
-.btn-danger {
-  @apply border-red-800 bg-red-900/60 hover:bg-red-800;
-}
-.chip {
-  @apply inline-flex items-center rounded-full border border-zinc-700 bg-zinc-800/80 px-2 py-0.5 text-xs text-zinc-300;
-}
+.btn-danger { @apply border-red-900 bg-red-950/80 text-red-200 hover:border-red-700 hover:bg-red-900/80; }
+.btn-ghost { @apply border-transparent bg-transparent text-zinc-400 hover:bg-raised hover:text-zinc-100; }
+.btn-sm { @apply px-2.5 py-1.5 text-xs; }
+
+/* ---------- chips & badges ---------- */
+
+.chip { @apply inline-flex items-center gap-1 rounded-full border border-line-strong bg-raised px-2.5 py-0.5 text-xs font-medium text-zinc-300; }
+.chip-accent { @apply border-emerald-800/80 bg-emerald-950/60 text-emerald-300; }
+.chip-info { @apply border-sky-800/80 bg-sky-950/60 text-sky-300; }
+.chip-warn { @apply border-amber-800/80 bg-amber-950/60 text-amber-300; }
+.chip-danger { @apply border-red-900/80 bg-red-950/60 text-red-300; }
+.chip-muted { @apply border-line bg-transparent text-zinc-500; }
+
+.dot { @apply inline-block h-1.5 w-1.5 shrink-0 rounded-full; }
+
+/* score pill — the product's core signal */
+.score { @apply inline-flex min-w-11 items-center justify-center rounded-md px-2 py-0.5 text-sm font-bold tabular-nums; }
+.score-hot { @apply bg-red-500/15 text-red-300 ring-1 ring-red-500/30; }
+.score-warm { @apply bg-amber-500/15 text-amber-300 ring-1 ring-amber-500/30; }
+.score-mild { @apply bg-yellow-500/10 text-yellow-200 ring-1 ring-yellow-500/20; }
+.score-cool { @apply bg-emerald-500/10 text-emerald-300 ring-1 ring-emerald-500/25; }
+.score-none { @apply bg-raised text-zinc-500 ring-1 ring-line-strong; }
+
+/* ---------- tables ---------- */
+
+.table-wrap { @apply overflow-x-auto rounded-xl border border-line bg-panel; }
+table { @apply w-full border-collapse; }
 .th {
-  @apply px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500;
+  @apply sticky top-0 z-10 whitespace-nowrap border-b border-line bg-panel px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-500;
 }
-.td {
-  @apply px-3 py-2 text-sm;
-}
+.td { @apply border-b border-line/60 px-4 py-3 text-sm text-zinc-300; }
+tbody tr:last-child .td { @apply border-b-0; }
+.row-hover:hover { @apply bg-raised/70; }
+.row-click { @apply cursor-pointer; }
+
+/* ---------- feedback ---------- */
+
+.skeleton { @apply animate-pulse rounded-md bg-raised; }
+.alert { @apply flex items-start gap-2.5 rounded-lg border px-3.5 py-2.5 text-sm; }
+.alert-error { @apply border-red-900/80 bg-red-950/50 text-red-200; }
+.alert-info { @apply border-sky-900/80 bg-sky-950/50 text-sky-200; }
+.alert-warn { @apply border-amber-900/80 bg-amber-950/50 text-amber-200; }
+
+.empty { @apply flex flex-col items-center justify-center gap-2 px-6 py-14 text-center; }
+.empty-icon { @apply mb-1 flex h-11 w-11 items-center justify-center rounded-xl border border-line bg-raised text-zinc-500; }
+.empty-title { @apply text-sm font-semibold text-zinc-200; }
+.empty-hint { @apply max-w-sm text-xs leading-5 text-zinc-500; }
+
+/* ---------- nav ---------- */
+
+.nav-item { @apply flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-zinc-400 hover:bg-raised hover:text-zinc-100; }
+.nav-item:focus-visible { @apply outline-none ring-2 ring-emerald-500/40; }
+.nav-item-active { @apply bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/10 hover:text-emerald-300; }
+
+.kbd { @apply rounded border border-line-strong bg-raised px-1.5 py-0.5 font-mono text-[11px] text-zinc-400; }
