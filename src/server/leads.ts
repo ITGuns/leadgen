@@ -1,4 +1,4 @@
-import { and, desc, eq, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { auditLog, businesses, campaignLeads, campaigns, leads, notes } from "@/db/schema";
 import { audit } from "./audit";
@@ -146,13 +146,21 @@ export async function bulkPatchLeads(
   patch: { status?: string; assignee?: string | null; tags?: string[] },
   actor: string,
 ): Promise<number> {
-  let n = 0;
-  for (const id of ids.slice(0, 1000)) {
-    await patchLead(id, patch, actor);
-    n++;
+  const db = getDb();
+  const targets = ids.slice(0, 1000);
+  if (!targets.length) return 0;
+  const set: Partial<typeof leads.$inferInsert> = { updatedAt: now().toISOString() };
+  if (patch.status !== undefined) {
+    if (!LEAD_STATUSES.includes(patch.status as (typeof LEAD_STATUSES)[number])) throw new Error("bad status");
+    set.status = patch.status;
   }
-  await audit(actor, "lead.bulk", { count: n, patch });
-  return n;
+  if (patch.assignee !== undefined) set.assignee = patch.assignee || null;
+  if (patch.tags !== undefined) set.tags = patch.tags.map((t) => t.trim()).filter(Boolean).slice(0, 20);
+  // ONE update, not N×(update + discarded detail reload) round trips
+  const rows = await db.update(leads).set(set).where(inArray(leads.id, targets)).returning({ id: leads.id });
+  if (patch.status === "dnc") await audit(actor, "lead.dnc", { leadIds: targets });
+  await audit(actor, "lead.bulk", { count: rows.length, patch });
+  return rows.length;
 }
 
 export async function addNote(leadId: number, author: string, body: string) {

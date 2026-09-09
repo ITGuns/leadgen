@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { withAuth } from "@/server/auth";
 import { audit } from "@/server/audit";
-import { defaults, env } from "@/server/config";
+import { defaults, env, isServerless } from "@/server/config";
 import { getSetting, setSetting } from "@/server/settings";
 import { effectiveSecret, secureSet } from "@/server/secure-store";
 import { anthropicKey } from "@/server/providers/ai";
@@ -34,6 +34,7 @@ export const GET = withAuth(async () => {
   ]);
   return Response.json({
     mockMode: env.mockMode,
+    serverless: isServerless(), // the monthly DuckDB extract must run from a workstation (D19)
     keys: {
       pagespeed: !!pagespeed,
       anthropic: !!anthropic,

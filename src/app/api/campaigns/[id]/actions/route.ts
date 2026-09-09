@@ -5,6 +5,7 @@ import { kickJobsAfterResponse } from "@/server/jobs/kick";
 export const POST = withAuth(async (req, identity, ctx) => {
   const { id } = await ctx.params;
   const campaignId = Number(id);
+  if (!Number.isInteger(campaignId) || campaignId <= 0) return Response.json({ error: "not found" }, { status: 404 });
   if (!(await getCampaign(campaignId))) return Response.json({ error: "not found" }, { status: 404 });
   const { action } = (await req.json()) as { action?: string };
   switch (action) {

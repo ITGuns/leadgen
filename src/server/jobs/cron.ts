@@ -26,8 +26,8 @@ export async function cronTick(at = now()): Promise<void> {
     const markerKey = `cron:last:${c.name}`;
     const last = await getSetting<string>(markerKey, "");
     if (last === dayKey(at)) continue;
+    await enqueueJob(c.jobType, {}, { dedupe: true }); // enqueue first — a failed insert must retry next tick
     await setSetting(markerKey, dayKey(at));
-    await enqueueJob(c.jobType, {}, { dedupe: true });
   }
 }
 

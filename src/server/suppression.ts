@@ -16,7 +16,11 @@ import { now } from "./config";
 export type SuppressionSets = { phones: Set<string>; domains: Set<string> };
 
 export async function loadSuppressionSets(kind: "client" | "dnc"): Promise<SuppressionSets> {
-  const rows = await getDb().select().from(suppressions).where(eq(suppressions.kind, kind));
+  // only the two matching columns — this table can hold 50k+ DNC rows
+  const rows = await getDb()
+    .select({ phone: suppressions.phone, domain: suppressions.domain })
+    .from(suppressions)
+    .where(eq(suppressions.kind, kind));
   return {
     phones: new Set(rows.map((r) => r.phone).filter(Boolean) as string[]),
     domains: new Set(rows.map((r) => r.domain).filter(Boolean) as string[]),
@@ -43,8 +47,11 @@ export async function importSuppressions(
   source?: string,
 ): Promise<{ added: number; invalid: number; duplicates: number }> {
   const db = getDb();
-  let added = 0, invalid = 0, duplicates = 0;
+  let invalid = 0;
   const ts = now().toISOString();
+  const values: (typeof suppressions.$inferInsert)[] = [];
+  const seen = new Set<string>();
+  let duplicates = 0;
   for (const raw of entries) {
     const value = raw.trim();
     if (!value) continue;
@@ -54,17 +61,21 @@ export async function importSuppressions(
       invalid++;
       continue;
     }
-    try {
-      const rows = await db
-        .insert(suppressions)
-        .values({ kind, phone, domain, source: source ?? "manual import", createdAt: ts })
-        .onConflictDoNothing()
-        .returning({ id: suppressions.id });
-      if (rows.length) added++;
-      else duplicates++;
-    } catch {
-      invalid++;
+    const key = `${kind}|${phone ?? ""}|${domain ?? ""}`;
+    if (seen.has(key)) {
+      duplicates++; // duplicate within the paste itself
+      continue;
     }
+    seen.add(key);
+    values.push({ kind, phone, domain, source: source ?? "manual import", createdAt: ts });
+  }
+  // chunked multi-row inserts — a 50k DNC paste must not be 50k round trips
+  let added = 0;
+  for (let c = 0; c < values.length; c += 1000) {
+    const chunk = values.slice(c, c + 1000);
+    const rows = await db.insert(suppressions).values(chunk).onConflictDoNothing().returning({ id: suppressions.id });
+    added += rows.length;
+    duplicates += chunk.length - rows.length; // already present in the table
   }
   await audit(actor, "suppressions.import", { kind, added, invalid, duplicates, source });
   return { added, invalid, duplicates };

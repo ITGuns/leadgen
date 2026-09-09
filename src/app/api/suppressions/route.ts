@@ -18,6 +18,7 @@ export const POST = withAuth(async (req, identity) => {
   const { kind, entries, source } = (await req.json()) as { kind?: string; entries?: string[]; source?: string };
   if (kind !== "client" && kind !== "dnc") return Response.json({ error: "kind must be client or dnc" }, { status: 400 });
   if (!entries?.length) return Response.json({ error: "entries required" }, { status: 400 });
+  const truncated = entries.length > 50_000; // never silently drop DNC entries (compliance)
   const result = await importSuppressions(kind, entries.slice(0, 50_000), identity.email, source);
-  return Response.json(result, { status: 201 });
+  return Response.json({ ...result, truncated, received: entries.length }, { status: 201 });
 });

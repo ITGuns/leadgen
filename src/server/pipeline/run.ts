@@ -17,7 +17,7 @@ import {
 } from "../providers/pagespeed";
 import { computeScore } from "../scoring/score";
 import { isSuppressed, loadSuppressionSets } from "../suppression";
-import type { JobContext } from "../jobs/registry";
+import { JobStopped, type JobContext } from "../jobs/registry";
 import { activeRelease } from "../ingest/releases";
 import { estimateCampaign } from "./estimate";
 import { fanOutCities } from "./fanout";
@@ -87,6 +87,7 @@ export async function runCampaign(ctx: JobContext): Promise<void> {
   try {
     for (let si = progress.stageIndex ?? 0; si < STAGE_ORDER.length; si++) {
       const stage = STAGE_ORDER[si];
+      if (ctx.shouldStop()) throw new JobStopped(); // slice deadline / shutdown (D19)
       if ((await control(campaignId)) !== "continue") return;
       await db.update(campaigns).set({ currentStage: stage }).where(eq(campaigns.id, campaignId));
       c = await reload(campaignId);
@@ -184,6 +185,7 @@ async function stagePull(c: Campaign, ctx: JobContext, progress: { cityIndex?: n
   const cond = candidateConditions(c);
   let offset = 0;
   while (attached < cap) {
+    if (ctx.shouldStop()) throw new JobStopped();
     if ((await control(c.id)) !== "continue") return;
     const batch = await db
       .select()
@@ -346,6 +348,7 @@ async function stageWebsiteCheck(c: Campaign, ctx: JobContext): Promise<void> {
   let processed = (((await reload(c.id)).stageCounts ?? {}) as Record<string, number>).website_checked ?? 0;
   for (;;) {
     if ((await control(c.id)) !== "continue") return;
+    if (ctx.shouldStop()) throw new JobStopped();
     const batch = await campaignLeadRows(
       c.id,
       sql`${businesses.websiteRaw} IS NOT NULL AND ${leads.websiteCheck} IS NULL AND ${businesses.websiteClass} IN ('unknown', 'real_site')`,
@@ -395,6 +398,7 @@ async function stagePagespeed(c: Campaign, ctx: JobContext): Promise<void> {
   let processed = (((await reload(c.id)).stageCounts ?? {}) as Record<string, number>).pagespeed_done ?? 0;
   for (;;) {
     if ((await control(c.id)) !== "continue") return;
+    if (ctx.shouldStop()) throw new JobStopped();
     const batch = await campaignLeadRows(
       c.id,
       sql`${businesses.websiteClass} = 'real_site' AND ${leads.pagespeed} IS NULL AND ${leads.websiteCheck} IS NOT NULL`,
@@ -457,6 +461,7 @@ async function stageOwnerExtract(c: Campaign, ctx: JobContext): Promise<void> {
   let processed = 0;
   for (;;) {
     if ((await control(c.id)) !== "continue") return;
+    if (ctx.shouldStop()) throw new JobStopped();
     const batch = await campaignLeadRows(c.id, sql`${businesses.websiteClass} = 'real_site' AND ${leads.ownerCheckedAt} IS NULL`).limit(10);
     if (batch.length === 0) break;
     await Promise.all(

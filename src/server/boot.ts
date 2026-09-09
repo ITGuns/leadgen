@@ -14,7 +14,13 @@ type G = typeof globalThis & { __leadforgeBootPromise?: Promise<void> };
 const g = globalThis as G;
 
 export async function boot(): Promise<void> {
-  if (!g.__leadforgeBootPromise) g.__leadforgeBootPromise = doBoot();
+  if (!g.__leadforgeBootPromise) {
+    // failed boots must not poison the warm instance — clear and let the next request retry
+    g.__leadforgeBootPromise = doBoot().catch((err) => {
+      g.__leadforgeBootPromise = undefined;
+      throw err;
+    });
+  }
   return g.__leadforgeBootPromise;
 }
 

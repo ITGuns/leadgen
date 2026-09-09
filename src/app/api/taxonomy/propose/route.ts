@@ -5,6 +5,7 @@ import { aiAvailable, getAIProvider } from "@/server/providers/ai";
 export const POST = withAuth(async (req) => {
   const { niche, useAI } = (await req.json()) as { niche?: string; useAI?: boolean };
   if (!niche?.trim()) return Response.json({ error: "niche required" }, { status: 400 });
+  if (niche.length > 120) return Response.json({ error: "niche too long (max 120 chars)" }, { status: 400 });
   const proposal = await proposeTaxonomy(niche);
   let aiCodes: string[] = [];
   if (useAI && (await aiAvailable()) && !proposal.autoApply) {

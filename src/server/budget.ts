@@ -66,13 +66,16 @@ export async function monthlyCeilingUSD(): Promise<number> {
  */
 export async function budgetGuard(campaignId: number, nextCallUSD: number): Promise<void> {
   if (nextCallUSD <= 0) return;
-  const [campaign] = await getDb().select().from(campaigns).where(eq(campaigns.id, campaignId)).limit(1);
+  // runs before EVERY billable call — one round trip of wall time, not four
+  const [[campaign], spent, ceiling, monthSpent] = await Promise.all([
+    getDb().select().from(campaigns).where(eq(campaigns.id, campaignId)).limit(1),
+    campaignSpendUSD(campaignId),
+    monthlyCeilingUSD(),
+    monthSpendUSD(),
+  ]);
   if (!campaign) throw new Error(`budgetGuard: campaign ${campaignId} not found`);
   const cap = campaign.caps.budgetCapUSD;
-  const spent = await campaignSpendUSD(campaignId);
   if (spent + nextCallUSD > cap) throw new BudgetExceededError("campaign", spent + nextCallUSD, cap);
-  const ceiling = await monthlyCeilingUSD();
-  const monthSpent = await monthSpendUSD();
   if (monthSpent + nextCallUSD > ceiling) throw new BudgetExceededError("monthly", monthSpent + nextCallUSD, ceiling);
 }
 

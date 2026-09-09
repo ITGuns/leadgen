@@ -53,8 +53,14 @@ export async function createCampaign(input: CampaignInput, createdBy: string) {
       createdAt: now().toISOString(),
     })
     .returning();
-  const estimate = await estimateCampaign(row);
-  await getDb().update(campaigns).set({ estimate }).where(eq(campaigns.id, row.id));
+  // best-effort: a transient estimate failure must not orphan the created row behind a 500
+  let estimate = null as Awaited<ReturnType<typeof estimateCampaign>> | null;
+  try {
+    estimate = await estimateCampaign(row);
+    await getDb().update(campaigns).set({ estimate }).where(eq(campaigns.id, row.id));
+  } catch {
+    // the plan stage re-estimates before any run; the builder shows "—" until then
+  }
   await audit(createdBy, "campaign.create", { id: row.id, name: row.name, niche: row.niche });
   return { ...row, estimate };
 }
@@ -79,8 +85,7 @@ export async function startCampaign(id: number, actor: string) {
     .where(eq(campaigns.id, id));
   await enqueueJob("campaign_run", { campaignId: id }, { campaignId: id, dedupe: true, maxAttempts: 3 });
   await audit(actor, "campaign.start", { id, estimateUSD: estimate.totalUSD, smoke: c.smoke });
-  const [updated] = await db.select().from(campaigns).where(eq(campaigns.id, id)).limit(1);
-  return updated!;
+  return { ...c, status: "running", pauseRequested: false, cancelRequested: false, estimate };
 }
 
 export async function pauseCampaign(id: number, actor: string): Promise<void> {
@@ -142,8 +147,9 @@ export async function retryErrors(id: number, actor: string) {
   return { websiteChecksCleared: wc.length, pagespeedCleared: ps.length };
 }
 
-export async function listCampaigns() {
-  return getDb().select().from(campaigns).orderBy(desc(campaigns.id));
+export async function listCampaigns(limit?: number) {
+  const q = getDb().select().from(campaigns).orderBy(desc(campaigns.id));
+  return limit ? q.limit(limit) : q;
 }
 
 export async function getCampaign(id: number) {

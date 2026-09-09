@@ -68,7 +68,14 @@ async function open(): Promise<DB> {
 
 export async function initDb(): Promise<DB> {
   if (g.__lfDb) return g.__lfDb;
-  if (!g.__lfDbInit) g.__lfDbInit = open();
+  if (!g.__lfDbInit) {
+    // clear the cached promise on rejection — otherwise one transient connect
+    // failure at cold start poisons the warm instance for its entire lifetime
+    g.__lfDbInit = open().catch((err) => {
+      g.__lfDbInit = undefined;
+      throw err;
+    });
+  }
   g.__lfDb = await g.__lfDbInit;
   return g.__lfDb;
 }

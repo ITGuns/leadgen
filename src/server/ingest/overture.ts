@@ -3,7 +3,7 @@ import path from "node:path";
 import { eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { placesOverture, releases } from "@/db/schema";
-import { env, now } from "../config";
+import { env, isServerless, now } from "../config";
 import type { JobContext } from "../jobs/registry";
 import { JobStopped } from "../jobs/registry";
 import { queryJson, withDuck } from "./duck";
@@ -94,6 +94,13 @@ export function normalizeRegion(region: string | null, fallback: string): string
 
 /** Extract the given states for the pinned release into places_overture. Resumable per state. */
 export async function runOvertureExtract(ctx: JobContext): Promise<void> {
+  // fail BEFORE creating a release row — withDuck would refuse anyway, but an early
+  // throw keeps orphan release rows out of Settings (D19)
+  if (isServerless()) {
+    throw new Error(
+      "the DuckDB extract does not run on serverless — run it from a workstation: DATABASE_URL=<supabase> npx tsx scripts/workstation-extract.ts <STATES> (HANDOFF · Monthly)",
+    );
+  }
   const db = getDb();
   const payload = (ctx.job.payload ?? {}) as { states?: string[]; chain?: boolean };
   const states = payload.states ?? ["TX", "FL", "GA"];

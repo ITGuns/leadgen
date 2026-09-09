@@ -122,7 +122,15 @@ export class Worker {
     return getDb()
       .select()
       .from(jobs)
-      .where(and(eq(jobs.status, "pending"), or(isNull(jobs.runAfter), lte(jobs.runAfter, nowIso))))
+      .where(
+        and(
+          eq(jobs.status, "pending"),
+          or(isNull(jobs.runAfter), lte(jobs.runAfter, nowIso)),
+          // a job hard-killed by the platform never reaches the failure path — don't
+          // let it claim forever once its attempt budget is spent
+          sql`${jobs.attempts} < ${jobs.maxAttempts}`,
+        ),
+      )
       .orderBy(desc(jobs.priority), asc(jobs.createdAt))
       .limit(limit);
   }

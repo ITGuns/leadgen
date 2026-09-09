@@ -10,11 +10,11 @@ test.describe.configure({ mode: "serial" });
 
 test("dashboard self-seeds the mock dataset", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByText("Businesses in local DB")).toBeVisible();
-  // seed ingest chain takes a couple of seconds on first boot
+  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+  // fresh DB renders the empty state until the seed ingest chain lands (a couple of seconds)
   await expect(async () => {
     await page.reload();
-    const count = await page.locator("main .card").first().locator(".text-2xl").innerText();
+    const count = await page.locator(".stat-value").first().innerText({ timeout: 2000 });
     expect(parseInt(count.replace(/,/g, ""), 10)).toBeGreaterThan(1900);
   }).toPass({ timeout: 60_000 });
 });
@@ -25,25 +25,26 @@ test("build, confirm mapping, and smoke-run a roofers·TX campaign at $0", async
   await page.getByRole("button", { name: "Propose categories" }).click();
   await expect(page.locator(".chip", { hasText: "Roofing" }).first()).toBeVisible();
   await page.getByRole("button", { name: "Confirm mapping" }).click();
-  await expect(page.getByText("✓ confirmed")).toBeVisible();
+  await expect(page.getByText("✓ Confirmed")).toBeVisible();
 
   await page.getByRole("button", { name: "TX", exact: true }).click();
   await page.getByText("Smoke test — first 200 records only").click();
-  await expect(page.getByText("records planned")).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText(/total \$0\.00 ≤ cap \$0\.00/)).toBeVisible();
+  await expect(page.getByText("Planned records")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText(/≤ cap \$0\.00/)).toBeVisible();
 
   await page.getByRole("button", { name: "Run smoke test" }).click();
   await page.waitForURL(/\/campaigns\/\d+/);
-  await expect(page.getByText("Completed", { exact: false })).toBeVisible({ timeout: 60_000 });
-  await expect(page.getByText("Cost accrued")).toBeVisible();
+  await expect(page.getByText("Completed", { exact: false }).first()).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByText(/Cost accrued/i)).toBeVisible();
   await expect(page.locator("main")).toContainText("$0.00");
   await expect(page.getByText(/Overture mock-2026-09/)).toBeVisible(); // release recorded
 });
 
 test("leads workspace ranks no-website leads on top; owner shows evidence", async ({ page }) => {
   await page.goto("/leads");
-  await expect(page.locator("tbody tr").first()).toBeVisible({ timeout: 15_000 });
-  const topScore = await page.locator("tbody tr").first().locator("td").nth(1).innerText();
+  // wait for real rows (the table shows skeleton placeholder rows while loading)
+  await expect(page.locator("tbody .score").first()).toBeVisible({ timeout: 15_000 });
+  const topScore = await page.locator("tbody .score").first().innerText();
   expect(parseInt(topScore, 10)).toBeGreaterThanOrEqual(90);
   await expect(page.locator("tbody tr").first()).toContainText(/No website|Dead site|Parked|Aggregator|Social/);
 
@@ -54,7 +55,7 @@ test("leads workspace ranks no-website leads on top; owner shows evidence", asyn
     expect(owner.trim()).not.toBe("—");
     expect(owner.trim().length).toBeGreaterThan(2);
   }).toPass({ timeout: 15_000 });
-  await page.locator("tbody tr").first().click();
+  await page.locator("tbody tr").first().getByRole("button").first().click();
   await expect(page.getByText(/via (heuristic|ai|outscraper)/)).toBeVisible();
   await expect(page.locator("blockquote")).toContainText(/.{10,}/); // verbatim snippet rendered
   await page.keyboard.press("Escape");

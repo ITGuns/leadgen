@@ -39,6 +39,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           </aside>
           <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">
             <div className="mx-auto w-full max-w-6xl">{children}</div>
+            {/* license requirement (AGENTS.md): attribution stays visible on phones too */}
+            <footer className="mx-auto mt-8 w-full max-w-6xl px-1 pb-2 text-[10px] leading-4 text-zinc-600 md:hidden">
+              Data © Overture Maps Foundation (CDLA-P-2.0) · © Foursquare OS Places (Apache-2.0) · Cities © SimpleMaps (CC-BY-4.0)
+            </footer>
           </main>
         </div>
       </body>

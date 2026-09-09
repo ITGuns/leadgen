@@ -14,7 +14,7 @@ const nextConfig: NextConfig = {
   // D19 — the native DuckDB module is workstation-only (dynamic import behind an
   // isServerless() guard); keep its ~100MB binaries out of every serverless function.
   outputFileTracingExcludes: {
-    "*": ["node_modules/@duckdb/**", "node_modules/playwright*/**"],
+    "*": ["node_modules/@duckdb/**", "node_modules/playwright*/**", ".data/**"],
   },
 };
 

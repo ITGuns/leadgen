@@ -19,15 +19,17 @@ export async function estimateCampaign(campaign: typeof campaigns.$inferSelect):
   const cond = candidateConditions(campaign);
   const cap = campaign.smoke ? defaults.smokeRecordLimit : campaign.caps.maxRecords;
 
-  const [matchedRow] = await db.select({ n: sql<number>`count(*)::int` }).from(businesses).where(cond);
+  // both counts in one round trip of wall time (this runs on every builder keystroke)
+  const [[matchedRow], [withSiteRow]] = await Promise.all([
+    db.select({ n: sql<number>`count(*)::int` }).from(businesses).where(cond),
+    // AI owner extraction runs only on real-site candidates — count those precisely
+    db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(businesses)
+      .where(sql`${cond} AND ${businesses.websiteClass} IN ('real_site', 'unknown')`),
+  ]);
   const matched = matchedRow?.n ?? 0;
   const plannedRecords = Math.min(matched, cap);
-
-  // AI owner extraction runs only on real-site candidates — count those precisely
-  const [withSiteRow] = await db
-    .select({ n: sql<number>`count(*)::int` })
-    .from(businesses)
-    .where(sql`${cond} AND ${businesses.websiteClass} IN ('real_site', 'unknown')`);
   const withSite = withSiteRow?.n ?? 0;
   // rate of the provider that will actually run: real Haiku ≈ $0.001/site, mock = $0
   const aiSites = Math.min(withSite, plannedRecords);

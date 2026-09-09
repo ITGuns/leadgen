@@ -8,12 +8,21 @@ import { getWorker } from "./worker";
  * job waiting up to a minute for the next Vercel Cron tick. Local/Docker keeps the
  * resident interval worker, so this is a no-op there.
  */
-export function kickJobsAfterResponse(budgetMs = 25_000): void {
+export function kickJobsAfterResponse(totalBudgetMs = 240_000): void {
   if (!isServerless()) return;
   after(async () => {
     try {
       const worker = await getWorker();
-      await worker.runSlice(budgetMs);
+      // Keep slicing while work remains: on Hobby the crons are daily, so this
+      // after() window is what actually drives a queued job to completion. Each
+      // slice re-checks the queue; handlers are checkpoint-resumable regardless.
+      const end = Date.now() + totalBudgetMs;
+      for (;;) {
+        const left = end - Date.now();
+        if (left < 10_000) break;
+        const { remaining } = await worker.runSlice(Math.min(left, 60_000));
+        if (remaining === 0) break;
+      }
     } catch (err) {
       console.error("[leadforge] after-response job slice failed:", err);
     }

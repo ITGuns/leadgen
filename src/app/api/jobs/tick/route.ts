@@ -1,4 +1,4 @@
-import { env } from "@/server/config";
+import { env, isServerless } from "@/server/config";
 import { cronTick } from "@/server/jobs/cron";
 import { getWorker } from "@/server/jobs/worker";
 
@@ -14,7 +14,9 @@ export const maxDuration = 300; // needs Vercel Pro for the full 300s; Hobby cla
 
 function authorized(req: Request): boolean {
   const secret = env.cronSecret();
-  if (!secret) return env.mockMode; // real mode without CRON_SECRET stays locked shut
+  // no secret: allow only LOCAL mock runs — a deployed instance without CRON_SECRET
+  // must never expose a public job-runner endpoint, mock mode or not
+  if (!secret) return env.mockMode && !isServerless();
   return req.headers.get("authorization") === `Bearer ${secret}`;
 }
 

@@ -25,7 +25,7 @@ export async function runConflate(ctx: JobContext): Promise<void> {
   const ts = now().toISOString();
 
   // ---- 1) Overture rows → businesses upsert (batched, resumable) ----
-  const progress = (ctx.job.progress ?? {}) as { offset?: number; fsqDone?: boolean; stats?: ConflateStats };
+  const progress = (ctx.job.progress ?? {}) as { offset?: number; overtureDone?: boolean; fsqDone?: boolean; stats?: ConflateStats };
   const stats: ConflateStats = {
     overtureUpserts: 0, fsqMatchedPhone: 0, fsqMatchedDomain: 0, fsqMatchedNameLoc: 0,
     fsqConflictSkips: 0, fsqFilledPhones: 0, fsqFilledWebsites: 0, fsqFilledEmails: 0, chainsFlagged: 0,
@@ -33,8 +33,8 @@ export async function runConflate(ctx: JobContext): Promise<void> {
     ...(progress.stats ?? {}),
   };
   const BATCH = 500;
-  if (!progress.fsqDone) {
-    for (let offset = progress.offset ?? 0; ; offset += BATCH) {
+  if (!progress.fsqDone && !progress.overtureDone) {
+    for (let offset = Math.max(progress.offset ?? 0, 0); ; offset += BATCH) {
       if (ctx.shouldStop()) throw new JobStopped();
       const rows = await db
         .select()
@@ -99,7 +99,7 @@ export async function runConflate(ctx: JobContext): Promise<void> {
       });
       await ctx.checkpoint({ offset: offset + rows.length, stats });
     }
-    await ctx.checkpoint({ fsqDone: false, offset: -1, stats }); // overture pass complete
+    await ctx.checkpoint({ overtureDone: true, stats }); // overture pass complete (offset stays valid for a re-run)
   }
 
   // ---- 2) FSQ gap-fill on matched records ----
