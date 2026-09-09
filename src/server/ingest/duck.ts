@@ -25,6 +25,10 @@ export async function withDuck<T>(fn: (conn: DuckDBConnection) => Promise<T>): P
     if (!env.mockMode) {
       await conn.run("INSTALL httpfs; LOAD httpfs;");
       await conn.run("SET s3_region='us-west-2';");
+      // scripts/net-proxy.ts — a local CONNECT tunnel with its own DNS, for networks
+      // whose router resolver flakes under heavy S3 streaming (TLS stays end-to-end)
+      const proxy = process.env.DUCKDB_HTTP_PROXY;
+      if (proxy) await conn.run(`SET http_proxy='${proxy.replaceAll("'", "''")}'`);
       const hfToken = await effectiveSecret("hf_token", env.hfToken());
       if (hfToken) {
         await conn.run(`CREATE SECRET hf (TYPE HUGGINGFACE, TOKEN '${hfToken.replaceAll("'", "''")}')`);
@@ -49,7 +53,7 @@ const TRANSIENT = /resolve hostname|getaddrinfo|ENOTFOUND|ETIMEDOUT|ECONNRESET|C
 export async function queryJsonRetry<T = Record<string, unknown>>(
   conn: DuckDBConnection,
   innerSql: string,
-  tries = 4,
+  tries = 8,
 ): Promise<T[]> {
   for (let attempt = 1; ; attempt++) {
     try {

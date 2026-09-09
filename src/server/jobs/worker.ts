@@ -65,6 +65,7 @@ export class Worker {
   private timer: ReturnType<typeof setInterval> | null = null;
   private stopping = false;
   private canceledCache = new Map<number, boolean>();
+  private active = new Set<number>(); // job ids running in THIS process
 
   constructor(private concurrency = defaults.jobConcurrency, private tickMs = defaults.workerTickMs) {
     this.queue = new PQueue({ concurrency });
@@ -75,6 +76,7 @@ export class Worker {
    * stale-heartbeat orphans (another slice may legitimately be mid-job). */
   async recover(onlyStale = false): Promise<number> {
     const staleBefore = new Date(Date.now() - STALE_HEARTBEAT_MS).toISOString();
+    const notMine = this.active.size ? sql`${jobs.id} NOT IN (${sql.join([...this.active].map((i) => sql`${i}`), sql`, `)})` : undefined;
     const rows = await getDb()
       .update(jobs)
       // the attempt goes back too: a crash/kill never reached a verdict, and the
@@ -82,8 +84,8 @@ export class Worker {
       .set({ status: "pending", heartbeatAt: null, attempts: sql`greatest(${jobs.attempts} - 1, 0)` })
       .where(
         onlyStale
-          ? and(eq(jobs.status, "running"), or(isNull(jobs.heartbeatAt), lt(jobs.heartbeatAt, staleBefore)))
-          : eq(jobs.status, "running"),
+          ? and(eq(jobs.status, "running"), or(isNull(jobs.heartbeatAt), lt(jobs.heartbeatAt, staleBefore)), notMine)
+          : and(eq(jobs.status, "running"), notMine),
       )
       .returning({ id: jobs.id });
     return rows.length;
@@ -206,8 +208,12 @@ export class Worker {
 
   private async run(id: number, deadline: number): Promise<void> {
     const db = getDb();
+    this.active.add(id);
     const [job] = await db.select().from(jobs).where(eq(jobs.id, id)).limit(1);
-    if (!job || job.status !== "running") return;
+    if (!job || job.status !== "running") {
+      this.active.delete(id);
+      return;
+    }
     const handler = getHandler(job.type);
     const heartbeat = setInterval(() => {
       void db.update(jobs).set({ heartbeatAt: now().toISOString() }).where(eq(jobs.id, id));
@@ -281,6 +287,7 @@ export class Worker {
         );
       }
     } finally {
+      this.active.delete(id);
       clearInterval(heartbeat);
     }
   }
