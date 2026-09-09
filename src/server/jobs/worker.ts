@@ -107,8 +107,16 @@ export class Worker {
   /** Claim up to available capacity and dispatch (persistent mode).
    *  Scheduling comparisons use REAL wall-clock time — the frozen mock clock is for
    *  data timestamps only. */
+  private lastStaleSweep = 0;
+
   async tick(): Promise<void> {
     if (this.stopping) return;
+    // periodic stale-heartbeat sweep: recovers jobs orphaned by a crash that
+    // happened while THIS process was already running (e.g. a killed sibling)
+    if (Date.now() - this.lastStaleSweep > 60_000) {
+      this.lastStaleSweep = Date.now();
+      await this.recover(true).catch(() => {});
+    }
     const capacity = this.concurrency - this.queue.size - this.queue.pending;
     if (capacity <= 0) return;
     const claimable = await this.claimables(capacity);
@@ -176,8 +184,11 @@ export class Worker {
     return row?.n ?? 0;
   }
 
-  /** Wait until nothing is pending or running (test/e2e helper, persistent mode). */
+  /** Wait until nothing is pending or running (workstation/test helper, persistent mode). */
   async drain(timeoutMs = 60_000): Promise<void> {
+    // a resumed run must first reclaim jobs a dead process left 'running' —
+    // without this the drain loop idles forever watching an orphan (found live)
+    await this.recover();
     const start = Date.now();
     for (;;) {
       await this.tick();
