@@ -53,7 +53,16 @@ async function open(): Promise<DB> {
       await migrateNodePg(db as never, MIGRATIONS);
     } catch {
       await new Promise((r) => setTimeout(r, 2500));
-      await migrateNodePg(db as never, MIGRATIONS);
+      try {
+        await migrateNodePg(db as never, MIGRATIONS);
+      } catch (err2) {
+        // A read-only database (provider disk-quota enforcement — hit live on the
+        // Supabase free tier) can't run the migrator's DDL even when nothing needs
+        // migrating. If the schema exists, serve reads instead of dying at boot.
+        const probe = await pool.query("select 1 from drizzle.__drizzle_migrations limit 1").catch(() => null);
+        if (!probe) throw err2;
+        console.warn("[leadforge] migration step skipped: database is read-only but schema exists — serving (reads work, writes will fail until the quota is resolved)");
+      }
     }
     return db;
   }
