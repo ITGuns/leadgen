@@ -1,6 +1,6 @@
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
-import { campaigns, leads, type CampaignCaps, type CampaignFilters, type CampaignTopUp } from "@/db/schema";
+import { campaigns, jobs, leads, type CampaignCaps, type CampaignFilters, type CampaignTopUp } from "@/db/schema";
 import { z } from "zod";
 import { audit } from "./audit";
 import { defaults, now } from "./config";
@@ -108,7 +108,21 @@ export async function cancelCampaign(id: number, actor: string): Promise<void> {
   const [c] = await db.select().from(campaigns).where(eq(campaigns.id, id)).limit(1);
   if (!c) throw new Error("campaign not found");
   if (c.status === "running") {
-    await db.update(campaigns).set({ cancelRequested: true }).where(eq(campaigns.id, id));
+    // a "running" campaign whose job died (failed/crashed) has nobody left to honor
+    // the flag — cancel it directly instead of spinning on "Canceling…" forever
+    const [live] = await db
+      .select({ id: jobs.id })
+      .from(jobs)
+      .where(and(eq(jobs.type, "campaign_run"), eq(jobs.campaignId, id), inArray(jobs.status, ["pending", "running"])))
+      .limit(1);
+    if (live) {
+      await db.update(campaigns).set({ cancelRequested: true }).where(eq(campaigns.id, id));
+    } else {
+      await db
+        .update(campaigns)
+        .set({ status: "canceled", cancelRequested: false, completedAt: now().toISOString() })
+        .where(eq(campaigns.id, id));
+    }
   } else if (["draft", "paused"].includes(c.status)) {
     await db.update(campaigns).set({ status: "canceled", completedAt: now().toISOString() }).where(eq(campaigns.id, id));
   }

@@ -1,6 +1,7 @@
 import { env, isServerless } from "@/server/config";
 import { cronTick } from "@/server/jobs/cron";
 import { getWorker } from "@/server/jobs/worker";
+import { registerAllHandlers } from "@/server/jobs/handlers";
 
 /**
  * D19 — the serverless heartbeat. Vercel Cron hits this every minute with
@@ -22,6 +23,7 @@ function authorized(req: Request): boolean {
 
 export async function GET(req: Request) {
   if (!authorized(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
+  registerAllHandlers();
   await cronTick();
   const worker = await getWorker();
   const result = await worker.runSlice(env.jobSliceMs());

@@ -22,7 +22,12 @@ export class JobStopped extends Error {
 
 export type JobHandler = (ctx: JobContext) => Promise<void>;
 
-const handlers = new Map<string, JobHandler>();
+// globalThis, NOT module scope: on Vercel each function bundle gets its own copy
+// of this module, but they share the process global — a module-level Map left the
+// job runner with zero handlers in production (every job failed "no handler").
+type G = typeof globalThis & { __lfJobHandlers?: Map<string, JobHandler> };
+const g = globalThis as G;
+const handlers = (g.__lfJobHandlers ??= new Map<string, JobHandler>());
 
 export function registerHandler(type: string, fn: JobHandler): void {
   handlers.set(type, fn);

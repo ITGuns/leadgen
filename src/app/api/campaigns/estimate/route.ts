@@ -1,4 +1,6 @@
-import type { campaigns } from "@/db/schema";
+import { sql } from "drizzle-orm";
+import { getDb } from "@/db/client";
+import { businesses, type campaigns } from "@/db/schema";
 import { withAuth } from "@/server/auth";
 import { CampaignInputSchema } from "@/server/campaigns";
 import { estimateCampaign } from "@/server/pipeline/estimate";
@@ -18,11 +20,22 @@ export const POST = withAuth(async (req) => {
     cityList: body.data.cityList ?? null,
     topUp: body.data.topUp ?? null,
   } as unknown as typeof campaigns.$inferSelect;
-  const estimate = await estimateCampaign(pseudo);
+  const [estimate, availableStates, topUp, ai] = await Promise.all([
+    estimateCampaign(pseudo),
+    // which states actually hold data — the builder disables Run + explains when a
+    // selected state has nothing loaded (0-record campaigns confused operators)
+    getDb()
+      .select({ region: sql<string>`region`, n: sql<number>`count(*)::int` })
+      .from(businesses)
+      .groupBy(sql`region`),
+    topUpAvailable(),
+    aiAvailable(),
+  ]);
   return Response.json({
     estimate,
-    topUpAvailable: await topUpAvailable(),
-    aiAvailable: await aiAvailable(),
+    availableStates: availableStates.filter((s) => s.region),
+    topUpAvailable: topUp,
+    aiAvailable: ai,
     aiRateUSD: (await getAIProvider()).costPerOwnerCallUSD,
     fitsCap: estimate.totalUSD <= body.data.caps.budgetCapUSD,
   });

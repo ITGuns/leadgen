@@ -3,12 +3,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { api, fmtUSD, US_STATES } from "@/lib/format";
+import { api, fmtUSD, US_STATES, stateName } from "@/lib/format";
 import { PageHeader, Skeleton } from "@/components/ui";
 
 type Proposal = { codes: string[]; source: string; autoApply: boolean };
 type EstimateResp = {
   estimate: { plannedRecords: number; aiUSD: number; topUpUSD: number; totalUSD: number; citiesFannedOut?: number };
+  availableStates: { region: string; n: number }[];
   topUpAvailable: boolean;
   aiAvailable: boolean;
   aiRateUSD: number;
@@ -192,7 +193,8 @@ export default function NewCampaignPage() {
     }
   }
 
-  const canRun = codes.length > 0 && states.length > 0 && (estimate?.fitsCap ?? false);
+  const plannedZero = estimate != null && estimate.estimate.plannedRecords === 0;
+  const canRun = codes.length > 0 && states.length > 0 && (estimate?.fitsCap ?? false) && !plannedZero;
   const needsExplicitConfirm = !mappingConfirmed;
 
   return (
@@ -319,22 +321,25 @@ export default function NewCampaignPage() {
               </div>
             </div>
             <div className="space-y-3 p-5">
-              <div role="group" aria-label="Target states" className="grid grid-cols-[repeat(auto-fill,minmax(2.75rem,1fr))] gap-1.5">
+              <div role="group" aria-label="Target states" className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-4">
                 {US_STATES.map((s) => {
                   const on = states.includes(s);
+                  const loaded = estimate?.availableStates?.some((a) => a.region === s) ?? false;
                   return (
                     <button
                       key={s}
                       type="button"
                       aria-pressed={on}
+                      title={loaded ? `${stateName(s)} — data loaded` : `${stateName(s)} — no data loaded yet`}
                       onClick={() => setStates(on ? states.filter((x) => x !== s) : [...states, s])}
-                      className={`h-10 min-w-10 rounded-lg border text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 ${
+                      className={`flex h-10 items-center justify-between gap-1.5 rounded-lg border px-2.5 text-left text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 ${
                         on
                           ? "border-emerald-600/70 bg-emerald-500/15 text-emerald-300"
                           : "border-line bg-raised text-zinc-400 hover:border-zinc-600 hover:text-zinc-200"
                       }`}
                     >
-                      {s}
+                      <span className="truncate">{stateName(s)}</span>
+                      {loaded && <span className="dot shrink-0 bg-emerald-400" aria-label="data loaded" />}
                     </button>
                   );
                 })}
@@ -525,6 +530,17 @@ export default function NewCampaignPage() {
               )}
             </div>
             <div className="space-y-2 border-t border-line p-5">
+              {plannedZero && (
+                <div className="alert alert-warn text-xs" role="status">
+                  <div className="flex-1">
+                    No businesses match — data is loaded for{" "}
+                    {(estimate?.availableStates ?? []).length
+                      ? (estimate!.availableStates).map((a) => `${stateName(a.region)} (${a.n.toLocaleString()})`).join(", ")
+                      : "no states yet (run the monthly extract first)"}
+                    . Pick a loaded state or adjust filters.
+                  </div>
+                </div>
+              )}
               <button type="button" className="btn btn-primary w-full" disabled={busy || !canRun} onClick={() => save(true)}>
                 {busy ? "Working…" : smoke ? "Run smoke test" : "Run campaign"}
               </button>

@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { api, CLASS_LABEL, fmtDate, STATUS_LABEL, US_STATES } from "@/lib/format";
+import { api, CLASS_LABEL, fmtDate, STATUS_LABEL, US_STATES, stateName } from "@/lib/format";
 import { EmptyState, ErrorState, PageHeader, ScorePill, Skeleton, StatusChip } from "@/components/ui";
 
 type Row = {
@@ -263,7 +263,7 @@ function LeadsWorkspace() {
         </select>
         <select className="input" aria-label="Filter by state" value={state} onChange={(e) => { setState(e.target.value); setPage(1); }}>
           <option value="">Any state</option>
-          {US_STATES.map((s) => <option key={s}>{s}</option>)}
+          {US_STATES.map((s) => <option key={s} value={s}>{stateName(s)}</option>)}
         </select>
         <select className="input" aria-label="Filter by website presence" value={hasWebsite} onChange={(e) => { setHasWebsite(e.target.value); setPage(1); }}>
           <option value="">Website: any</option><option value="yes">Has real site</option><option value="no">No real site</option>

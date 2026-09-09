@@ -1,6 +1,7 @@
 import { after } from "next/server";
 import { isServerless } from "../config";
 import { getWorker } from "./worker";
+import { registerAllHandlers } from "./handlers";
 
 /**
  * D19 — snappy serverless job starts: routes that enqueue work call this so the SAME
@@ -12,6 +13,7 @@ export function kickJobsAfterResponse(totalBudgetMs = 240_000): void {
   if (!isServerless()) return;
   after(async () => {
     try {
+      registerAllHandlers(); // this bundle's registry copy may be fresh (globalThis-backed, idempotent)
       const worker = await getWorker();
       // Keep slicing while work remains: on Hobby the crons are daily, so this
       // after() window is what actually drives a queued job to completion. Each
