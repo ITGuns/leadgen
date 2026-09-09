@@ -29,7 +29,7 @@ if (!states.length) {
   registerAllHandlers();
   const worker = new Worker(1, 250);
   console.log(`extracting ${states.join(", ")} — this streams the public parquet; expect minutes per state`);
-  await enqueueJob("ingest_overture", { states, chain: true }, { maxAttempts: 1 });
+  await enqueueJob("ingest_overture", { states, chain: true }, { maxAttempts: 1, dedupe: true });
   await worker.drain(6 * 3600_000);
   const rel = await getDb().select().from(releases);
   const [countRow] = await getDb().select({ n: sql<number>`count(*)::int` }).from(businesses);

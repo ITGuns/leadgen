@@ -39,6 +39,9 @@ async function open(): Promise<DB> {
       idleTimeoutMillis: 20_000,
       connectionTimeoutMillis: 15_000,
     });
+    // an idle pooled client's connection error (network blip, pooler recycle) emits
+    // on the pool — without a listener that's an uncaught exception and the process dies
+    pool.on("error", (err) => console.error("[leadforge] idle pg client error:", err.message));
     const db = drizzleNodePg(pool, { schema }) as unknown as DB;
     // NO advisory lock here: session-scoped locks are unusable through the Supabase
     // TRANSACTION pooler — lock and unlock land on different pooled server

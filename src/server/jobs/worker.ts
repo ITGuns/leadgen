@@ -77,7 +77,9 @@ export class Worker {
     const staleBefore = new Date(Date.now() - STALE_HEARTBEAT_MS).toISOString();
     const rows = await getDb()
       .update(jobs)
-      .set({ status: "pending", heartbeatAt: null })
+      // the attempt goes back too: a crash/kill never reached a verdict, and the
+      // claim guard (attempts < maxAttempts) would otherwise strand maxAttempts:1 jobs
+      .set({ status: "pending", heartbeatAt: null, attempts: sql`greatest(${jobs.attempts} - 1, 0)` })
       .where(
         onlyStale
           ? and(eq(jobs.status, "running"), or(isNull(jobs.heartbeatAt), lt(jobs.heartbeatAt, staleBefore)))
