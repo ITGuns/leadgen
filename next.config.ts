@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "standalone", // slim Docker runtime image (ARCH A1); Vercel ignores this and does its own tracing
+  // standalone = slim Docker runtime image (ARCH A1). NEVER on Vercel: its build
+  // finalizer expects the default output layout (ENOENT next-server.js.nft.json).
+  output: process.env.VERCEL ? undefined : "standalone",
   serverExternalPackages: [
     "@duckdb/node-api",
     "@duckdb/node-bindings",
