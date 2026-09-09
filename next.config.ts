@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
     "@duckdb/node-api",
     "@duckdb/node-bindings",
     "@electric-sql/pglite",
-    "postgres",
+    "pg",
     "exceljs",
   ],
   // D19 — the native DuckDB module is workstation-only (dynamic import behind an
