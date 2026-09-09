@@ -6,7 +6,7 @@ import { env, now } from "../config";
 import { effectiveSecret } from "../secure-store";
 import type { JobContext } from "../jobs/registry";
 import { JobStopped } from "../jobs/registry";
-import { queryJson, withDuck } from "./duck";
+import { queryJsonRetry, withDuck } from "./duck";
 import { activateRelease, ensureReleaseRow } from "./releases";
 
 /**
@@ -99,7 +99,7 @@ export async function runFsqExtract(ctx: JobContext): Promise<void> {
     for (let i = progress.stateIndex ?? 0; i < states.length; i++) {
       if (ctx.shouldStop()) throw new JobStopped();
       const state = states[i];
-      const rows = await queryJson<FsqRow>(conn, fsqSelectSql(fsqSourcePath(), state));
+      const rows = await queryJsonRetry<FsqRow>(conn, fsqSelectSql(fsqSourcePath(), state));
       const values = rows
         .filter((r) => r.fsq_place_id && r.name)
         .map((r) => ({

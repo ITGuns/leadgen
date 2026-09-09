@@ -14,8 +14,8 @@ import { registerAllHandlers } from "@/server/jobs/handlers";
 import { Worker, enqueueJob } from "@/server/jobs/worker";
 import { ensureDirs } from "@/server/config";
 import { getDb, initDb } from "@/db/client";
-import { businesses, releases } from "@/db/schema";
-import { sql } from "drizzle-orm";
+import { businesses, jobs, releases } from "@/db/schema";
+import { and, eq, sql } from "drizzle-orm";
 
 const states = process.argv.slice(2).filter((s) => /^[A-Za-z]{2}$/.test(s)).map((s) => s.toUpperCase());
 if (!states.length) {
@@ -29,7 +29,14 @@ if (!states.length) {
   registerAllHandlers();
   const worker = new Worker(1, 250);
   console.log(`extracting ${states.join(", ")} — this streams the public parquet; expect minutes per state`);
-  await enqueueJob("ingest_overture", { states, chain: true }, { maxAttempts: 1, dedupe: true });
+  // a prior FAILED run keeps its checkpoint (per-state progress) — revive it rather
+  // than enqueueing a fresh job that would re-extract everything from state one
+  const payload = { states, chain: true };
+  await getDb()
+    .update(jobs)
+    .set({ status: "pending", attempts: 0, lastError: null, runAfter: null })
+    .where(and(eq(jobs.type, "ingest_overture"), eq(jobs.status, "failed"), sql`${jobs.payload} = ${JSON.stringify(payload)}::jsonb`));
+  await enqueueJob("ingest_overture", payload, { maxAttempts: 5, dedupe: true });
   await worker.drain(6 * 3600_000);
   const rel = await getDb().select().from(releases);
   const [countRow] = await getDb().select({ n: sql<number>`count(*)::int` }).from(businesses);

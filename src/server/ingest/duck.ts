@@ -41,3 +41,24 @@ export async function queryJson<T = Record<string, unknown>>(conn: DuckDBConnect
   const rows = reader.getRows();
   return rows.map((r) => JSON.parse(String(r[0])) as T);
 }
+
+const TRANSIENT = /resolve hostname|getaddrinfo|ENOTFOUND|ETIMEDOUT|ECONNRESET|Connection error|timed out|Could not establish/i;
+
+/** queryJson with retries for transient network faults (flaky DNS mid-scan kills
+ * hours of S3 streaming otherwise — hit live on a workstation extract, D22). */
+export async function queryJsonRetry<T = Record<string, unknown>>(
+  conn: DuckDBConnection,
+  innerSql: string,
+  tries = 4,
+): Promise<T[]> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await queryJson<T>(conn, innerSql);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (attempt >= tries || !TRANSIENT.test(msg)) throw err;
+      console.warn(`[ingest] transient network fault (attempt ${attempt}/${tries}) — retrying in 25s: ${msg.slice(0, 120)}`);
+      await new Promise((r) => setTimeout(r, 25_000));
+    }
+  }
+}

@@ -6,7 +6,7 @@ import { placesOverture, releases } from "@/db/schema";
 import { env, isServerless, now } from "../config";
 import type { JobContext } from "../jobs/registry";
 import { JobStopped } from "../jobs/registry";
-import { queryJson, withDuck } from "./duck";
+import { queryJsonRetry, withDuck } from "./duck";
 import { runOvertureGate } from "./gate";
 import { activateRelease, ensureReleaseRow, failRelease } from "./releases";
 
@@ -113,7 +113,7 @@ export async function runOvertureExtract(ctx: JobContext): Promise<void> {
     for (let i = progress.stateIndex ?? 0; i < states.length; i++) {
       if (ctx.shouldStop()) throw new JobStopped();
       const state = states[i];
-      const rows = await queryJson<OvertureRow>(conn, overtureSelectSql(overtureSourcePath(), state));
+      const rows = await queryJsonRetry<OvertureRow>(conn, overtureSelectSql(overtureSourcePath(), state));
       const ts = now().toISOString();
       const values = rows
         .filter((r) => r.id && r.name)
