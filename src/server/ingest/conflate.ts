@@ -44,59 +44,100 @@ export async function runConflate(ctx: JobContext): Promise<void> {
         .limit(BATCH)
         .offset(offset);
       if (rows.length === 0) break;
-      await db.transaction(async (tx) => {
-        for (const r of rows) {
-          const phone = (r.phones ?? []).map(normalizePhone).find(Boolean) ?? null;
-          const websiteRaw = (r.websites ?? [])[0] ?? null;
-          const websiteNormalized = websiteRaw ? domainOf(websiteRaw) : null;
-          const staticClass = classifyStatic(r.websites, r.socials);
-          const [existing] = await tx.select().from(businesses).where(eq(businesses.gersId, r.gersId)).limit(1);
-          const base = {
-            name: r.name,
-            normalizedName: normalizeName(r.name),
-            phone: phone ?? existing?.phone ?? null,
-            phoneSource: phone ? "overture" : existing?.phoneSource ?? null,
-            websiteRaw: websiteRaw ?? existing?.websiteRaw ?? null,
-            websiteNormalized: websiteNormalized ?? existing?.websiteNormalized ?? null,
-            websiteSource: websiteRaw ? "overture" : existing?.websiteSource ?? null,
-            socials: r.socials ?? [],
-            emails: (r.emails ?? []).length ? r.emails : existing?.emails ?? [],
-            street: r.street, city: r.city, region: r.region, postal: r.postal,
-            lat: r.lat, lng: r.lng,
-            taxonomyPrimary: r.taxonomyPrimary,
-            taxonomyAlternates: r.taxonomyAlternates ?? [],
-            confidence: r.confidence,
-            operatingStatus: r.operatingStatus ?? "unknown",
-            lastSeenRelease: overtureRel.releaseId,
-            updatedAt: ts,
-          };
-          if (existing) {
-            // keep a fetched classification unless the website itself changed
-            const websiteChanged = (websiteRaw ?? null) !== (existing.websiteRaw ?? null);
-            // §4.0 release diff: count changes only across releases, so a same-release re-run diffs to zero
-            const fromPriorRelease = existing.lastSeenRelease !== overtureRel.releaseId;
-            if (fromPriorRelease && websiteChanged) stats.changedWebsites++;
-            if (fromPriorRelease && phone && existing.phone && phone !== existing.phone) stats.changedPhones++;
-            const websiteClass = websiteChanged
-              ? staticClass
-              : existing.websiteClass === "unknown" ? staticClass : existing.websiteClass;
-            const sources: BusinessSources = { ...(existing.sources ?? {}), overture: { release: overtureRel.releaseId } };
-            await tx.update(businesses).set({ ...base, websiteClass, sources }).where(eq(businesses.id, existing.id));
-          } else {
-            await tx.insert(businesses).values({
-              ...base,
-              gersId: r.gersId,
-              identityKey: identityKeyFor({ gersId: r.gersId, name: r.name }),
-              websiteClass: staticClass,
-              sources: { overture: { release: overtureRel.releaseId } },
-              firstSeenRelease: overtureRel.releaseId,
-              createdAt: ts,
-            });
-            stats.created++;
-          }
-          stats.overtureUpserts++;
+      // Batched: ONE select for the whole chunk + ONE bulk upsert — the per-row
+      // version was ~3 round trips per business, unusable against a remote DB at
+      // state scale (D19/D22). Semantics identical: the final field values are
+      // computed here (existing-row fallbacks included), so `excluded.*` in the
+      // ON CONFLICT update IS the desired end state. places_overture's PK is the
+      // GERS id, so a chunk never addresses the same conflict row twice.
+      const existingRows = await db
+        .select()
+        .from(businesses)
+        .where(inArray(businesses.gersId, rows.map((r) => r.gersId)));
+      const existingByGers = new Map(existingRows.map((b) => [b.gersId, b]));
+      const upserts: (typeof businesses.$inferInsert)[] = [];
+      for (const r of rows) {
+        const phone = (r.phones ?? []).map(normalizePhone).find(Boolean) ?? null;
+        const websiteRaw = (r.websites ?? [])[0] ?? null;
+        const websiteNormalized = websiteRaw ? domainOf(websiteRaw) : null;
+        const staticClass = classifyStatic(r.websites, r.socials);
+        const existing = existingByGers.get(r.gersId);
+        const base = {
+          name: r.name,
+          normalizedName: normalizeName(r.name),
+          phone: phone ?? existing?.phone ?? null,
+          phoneSource: phone ? "overture" : existing?.phoneSource ?? null,
+          websiteRaw: websiteRaw ?? existing?.websiteRaw ?? null,
+          websiteNormalized: websiteNormalized ?? existing?.websiteNormalized ?? null,
+          websiteSource: websiteRaw ? "overture" : existing?.websiteSource ?? null,
+          socials: r.socials ?? [],
+          emails: (r.emails ?? []).length ? r.emails : existing?.emails ?? [],
+          street: r.street, city: r.city, region: r.region, postal: r.postal,
+          lat: r.lat, lng: r.lng,
+          taxonomyPrimary: r.taxonomyPrimary,
+          taxonomyAlternates: r.taxonomyAlternates ?? [],
+          confidence: r.confidence,
+          operatingStatus: r.operatingStatus ?? "unknown",
+          lastSeenRelease: overtureRel.releaseId,
+          updatedAt: ts,
+        };
+        if (existing) {
+          // keep a fetched classification unless the website itself changed
+          const websiteChanged = (websiteRaw ?? null) !== (existing.websiteRaw ?? null);
+          // §4.0 release diff: count changes only across releases, so a same-release re-run diffs to zero
+          const fromPriorRelease = existing.lastSeenRelease !== overtureRel.releaseId;
+          if (fromPriorRelease && websiteChanged) stats.changedWebsites++;
+          if (fromPriorRelease && phone && existing.phone && phone !== existing.phone) stats.changedPhones++;
+          const websiteClass = websiteChanged
+            ? staticClass
+            : existing.websiteClass === "unknown" ? staticClass : existing.websiteClass;
+          const sources: BusinessSources = { ...(existing.sources ?? {}), overture: { release: overtureRel.releaseId } };
+          upserts.push({
+            ...base,
+            gersId: r.gersId,
+            identityKey: existing.identityKey,
+            websiteClass,
+            sources,
+            firstSeenRelease: existing.firstSeenRelease,
+            createdAt: existing.createdAt,
+          });
+        } else {
+          upserts.push({
+            ...base,
+            gersId: r.gersId,
+            identityKey: identityKeyFor({ gersId: r.gersId, name: r.name }),
+            websiteClass: staticClass,
+            sources: { overture: { release: overtureRel.releaseId } },
+            firstSeenRelease: overtureRel.releaseId,
+            createdAt: ts,
+          });
+          stats.created++;
         }
-      });
+        stats.overtureUpserts++;
+      }
+      if (upserts.length) {
+        const ex = (name: string) => sql.raw(`excluded."${name}"`);
+        await db
+          .insert(businesses)
+          .values(upserts)
+          .onConflictDoUpdate({
+            target: businesses.gersId,
+            // id / identity_key / first_seen_release / created_at deliberately untouched:
+            // business ids stay stable across releases so leads never detach (C4)
+            set: {
+              name: ex("name"), normalizedName: ex("normalized_name"),
+              phone: ex("phone"), phoneSource: ex("phone_source"),
+              websiteRaw: ex("website_raw"), websiteNormalized: ex("website_normalized"),
+              websiteSource: ex("website_source"), websiteClass: ex("website_class"),
+              socials: ex("socials"), emails: ex("emails"),
+              street: ex("street"), city: ex("city"), region: ex("region"), postal: ex("postal"),
+              lat: ex("lat"), lng: ex("lng"),
+              taxonomyPrimary: ex("taxonomy_primary"), taxonomyAlternates: ex("taxonomy_alternates"),
+              confidence: ex("confidence"), operatingStatus: ex("operating_status"),
+              sources: ex("sources"), lastSeenRelease: ex("last_seen_release"), updatedAt: ex("updated_at"),
+            } as never,
+          });
+      }
       await ctx.checkpoint({ offset: offset + rows.length, stats });
     }
     await ctx.checkpoint({ overtureDone: true, stats }); // overture pass complete (offset stays valid for a re-run)
