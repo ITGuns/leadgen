@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from "jose";
 import { env, MOCK_IDENTITY } from "./config";
 
@@ -47,8 +48,30 @@ export function __setTestJwks(t: TestJwks | null): void {
   (globalThis as { __leadforgeTestJwks?: TestJwks | null }).__leadforgeTestJwks = t;
 }
 
+/** D23 — APP_PASSWORD mode: verify the Basic header the proxy already gated on
+ * (defense in depth — API routes never trust the proxy alone, G8). */
+function basicIdentity(req: Request): Identity | null {
+  const password = env.appPassword();
+  if (!password) return null;
+  const header = req.headers.get("authorization") ?? "";
+  if (!header.startsWith("Basic ")) return null;
+  try {
+    const decoded = Buffer.from(header.slice(6), "base64").toString("utf8");
+    const pass = decoded.slice(decoded.indexOf(":") + 1);
+    const a = Buffer.from(pass);
+    const b = Buffer.from(password);
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+    const email = env.operatorEmail();
+    return { email, name: email.split("@")[0] };
+  } catch {
+    return null;
+  }
+}
+
 export async function getIdentity(req: Request): Promise<Identity | null> {
   if (env.mockMode) return MOCK_IDENTITY;
+  // D23 — a configured APP_PASSWORD is always required (never bypassed by other modes)
+  if (env.appPassword()) return basicIdentity(req);
   // D20 — AUTH_TRUST_PLATFORM=1: the platform in front of the app (Vercel Deployment
   // Protection) already authenticated this request; requests carry no CF Access JWT.
   // Explicit opt-in only — the default stays fail-closed on the Access JWT.

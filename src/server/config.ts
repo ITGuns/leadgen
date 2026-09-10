@@ -56,6 +56,9 @@ export const env = {
   supabaseUrl: () => (process.env.SUPABASE_URL || "").replace(/\/$/, ""),
   supabaseServiceKey: () => process.env.SUPABASE_SERVICE_ROLE_KEY || "",
   cronSecret: () => process.env.CRON_SECRET || "",
+  /** D23 — the app's own front door: HTTP Basic with this password (any username).
+   * Exists because Vercel's free tier cannot protect the production domain. */
+  appPassword: () => process.env.APP_PASSWORD || "",
   /** Explicit, documented weakening switch (D20): trust the platform's own door
    * (Vercel Deployment Protection / a fronting proxy) instead of CF Access JWTs. */
   authTrustPlatform: () => bool(process.env.AUTH_TRUST_PLATFORM, false),
