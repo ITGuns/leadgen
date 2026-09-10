@@ -121,10 +121,16 @@ export async function runCampaign(ctx: JobContext): Promise<void> {
       if ((await control(campaignId)) !== "continue") return;
     }
   } catch (err) {
-    await db
-      .update(campaigns)
-      .set({ status: "failed", completedAt: now().toISOString() })
-      .where(eq(campaigns.id, campaignId));
+    // a slice-deadline/shutdown stop is NOT a failure — the job requeues and the next
+    // slice resumes from the checkpoint; only a real error on the FINAL attempt
+    // flips the campaign to failed (earlier attempts leave it running for the retry)
+    if (err instanceof JobStopped) throw err;
+    if (ctx.job.attempts >= ctx.job.maxAttempts) {
+      await db
+        .update(campaigns)
+        .set({ status: "failed", completedAt: now().toISOString() })
+        .where(eq(campaigns.id, campaignId));
+    }
     throw err;
   }
 }
