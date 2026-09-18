@@ -43,7 +43,8 @@ next-env.d.ts
 # LeadForge data & runtime
 .data/
 .env
-exports/
-backups/
+# root-level runtime output dirs ONLY — unanchored patterns swallowed src/server/exports + src/app/(api/)exports out of the repo (found by cold-clone audit)
+/exports/
+/backups/
 test-results/
 playwright-report/
