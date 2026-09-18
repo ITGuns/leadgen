@@ -24,10 +24,12 @@ test("build, confirm mapping, and smoke-run a roofers·TX campaign at $0", async
   await page.getByPlaceholder('Niche, e.g. "roofers"').fill("roofers");
   await page.getByRole("button", { name: "Propose categories" }).click();
   await expect(page.locator(".chip", { hasText: "Roofing" }).first()).toBeVisible();
-  await page.getByRole("button", { name: "Confirm mapping" }).click();
+  // retry-safe: a previous attempt may have persisted the mapping (auto-applies)
+  const confirmBtn = page.getByRole("button", { name: "Confirm mapping" });
+  if (await confirmBtn.isVisible().catch(() => false)) await confirmBtn.click();
   await expect(page.getByText("✓ Confirmed")).toBeVisible();
 
-  await page.getByRole("button", { name: "TX", exact: true }).click();
+  await page.getByRole("button", { name: /^Texas/ }).click();
   await page.getByText("Smoke test — first 200 records only").click();
   await expect(page.getByText("Planned records")).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText(/≤ cap \$0\.00/)).toBeVisible();
